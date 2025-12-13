@@ -15,7 +15,7 @@
 import https from 'https';
 import http from 'http';
 
-const BACKEND_URL = process.env.KEEP_ALIVE_URL || process.env.BACKEND_URL || 'http://localhost:5001';
+const BACKEND_URL = process.env.KEEP_ALIVE_URL || process.env.BACKEND_URL || 'https://mcfleet-marketplace.onrender.com';
 
 const pingBackend = () => {
     const url = new URL(`${BACKEND_URL}/ping`);
