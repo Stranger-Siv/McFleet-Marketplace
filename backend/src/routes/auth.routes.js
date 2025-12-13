@@ -1,0 +1,1478 @@
+import express from 'express';
+import passport from 'passport';
+import jwt from 'jsonwebtoken';
+import { protect, authorizeRoles } from '../middlewares/auth.middleware.js';
+import SellerRequest from '../models/SellerRequest.js';
+import User from '../models/User.js';
+import PriceRange from '../models/PriceRange.js';
+import ItemListing from '../models/ItemListing.js';
+import Order from '../models/Order.js';
+import Transaction from '../models/Transaction.js';
+import Settings from '../models/Settings.js';
+import Dispute from '../models/Dispute.js';
+import AuditLog from '../models/AuditLog.js';
+import Category from '../models/Category.js';
+import Survival from '../models/Survival.js';
+import { logAdminAction } from '../utils/auditLogger.js';
+
+const router = express.Router();
+
+router.get('/discord', passport.authenticate('discord', { session: false }));
+
+router.get('/discord/callback',
+  passport.authenticate('discord', { session: false, failureRedirect: '/' }),
+  (req, res) => {
+    const token = jwt.sign(
+      {
+        userId: req.user._id,
+        role: req.user.role
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    res.redirect(`${process.env.FRONTEND_URL}/auth/success?token=${token}`);
+  }
+);
+
+router.get('/me', protect, async (req, res) => {
+  try {
+    // Check if user has a seller request (get most recent one)
+    // First check for pending, then get most recent of any status
+    let sellerRequest = await SellerRequest.findOne({ 
+      user: req.user.userId, 
+      status: 'pending' 
+    });
+    
+    // If no pending request, get the most recent request of any status
+    if (!sellerRequest) {
+      sellerRequest = await SellerRequest.findOne({ user: req.user.userId })
+        .sort({ updatedAt: -1 });
+    }
+    
+    const userData = {
+      ...req.user,
+      sellerRequest: sellerRequest ? {
+        status: sellerRequest.status,
+        createdAt: sellerRequest.createdAt,
+        updatedAt: sellerRequest.updatedAt
+      } : null
+    };
+
+    res.json({
+      success: true,
+      user: userData
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/seller/test', protect, authorizeRoles('seller'), (req, res) => {
+  res.json({
+    success: true,
+    message: 'Seller access granted'
+  });
+});
+
+router.get('/seller/transactions', protect, authorizeRoles('seller'), async (req, res) => {
+  try {
+    const transactions = await Transaction.find({ seller: req.user.userId })
+      .select('_id order itemPrice sellerPayout status createdAt')
+      .populate({
+        path: 'order',
+        select: '_id',
+        populate: {
+          path: 'listing',
+          select: 'title itemName'
+        }
+      })
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      transactions
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/seller/earnings', protect, authorizeRoles('seller'), async (req, res) => {
+  try {
+    const transactions = await Transaction.find({ seller: req.user.userId });
+
+    const totalOrders = transactions.length;
+    const totalEarned = transactions.reduce((sum, t) => sum + t.sellerPayout, 0);
+    const paidOut = transactions
+      .filter(t => t.status === 'paid_out')
+      .reduce((sum, t) => sum + t.sellerPayout, 0);
+    const pendingPayout = transactions
+      .filter(t => t.status === 'recorded')
+      .reduce((sum, t) => sum + t.sellerPayout, 0);
+
+    res.json({
+      success: true,
+      summary: {
+        totalOrders,
+        totalEarned,
+        paidOut,
+        pendingPayout
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/seller/listings', protect, authorizeRoles('seller'), async (req, res) => {
+  try {
+    // Sellers can see all their listings including disabled ones
+    const listings = await ItemListing.find({ seller: req.user.userId })
+      .select('_id title price status createdAt')
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      listings
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/seller-request', protect, async (req, res) => {
+  try {
+    // Check for pending request
+    const pendingRequest = await SellerRequest.findOne({ 
+      user: req.user.userId, 
+      status: 'pending' 
+    });
+
+    if (pendingRequest) {
+      return res.status(400).json({ message: 'Request already submitted' });
+    }
+
+    // Check for rejected request within last 24 hours
+    const rejectedRequest = await SellerRequest.findOne({ 
+      user: req.user.userId, 
+      status: 'rejected' 
+    }).sort({ updatedAt: -1 }); // Get most recent rejected request
+
+    if (rejectedRequest) {
+      const rejectionTime = new Date(rejectedRequest.updatedAt);
+      const now = new Date();
+      const hoursSinceRejection = (now - rejectionTime) / (1000 * 60 * 60);
+
+      if (hoursSinceRejection < 24) {
+        const hoursRemaining = Math.ceil(24 - hoursSinceRejection);
+        return res.status(400).json({ 
+          message: `You can resubmit a seller request after 24 hours. Please wait ${hoursRemaining} more hour(s).`,
+          hoursRemaining: hoursRemaining,
+          canResubmitAt: new Date(rejectionTime.getTime() + 24 * 60 * 60 * 1000)
+        });
+      }
+    }
+
+    await SellerRequest.create({ user: req.user.userId });
+
+    res.json({
+      success: true,
+      message: 'Seller request submitted'
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/seller-requests', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const requests = await SellerRequest.find().populate('user');
+    res.json(requests);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/seller-requests/:id/approve', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const request = await SellerRequest.findById(req.params.id);
+
+    if (!request) {
+      return res.status(404).json({ message: 'Request not found' });
+    }
+
+    if (request.status !== 'pending') {
+      return res.status(400).json({ message: 'Request already finalized' });
+    }
+
+    request.status = 'approved';
+    await request.save();
+
+    await User.findByIdAndUpdate(request.user, { role: 'seller' });
+
+    await logAdminAction({
+      adminId: req.user.userId,
+      action: 'APPROVE_SELLER',
+      targetType: 'user',
+      targetId: request.user
+    });
+
+    res.json({
+      success: true,
+      message: 'Seller request approved'
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/seller-requests/:id/reject', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const request = await SellerRequest.findById(req.params.id);
+
+    if (!request) {
+      return res.status(404).json({ message: 'Request not found' });
+    }
+
+    if (request.status !== 'pending') {
+      return res.status(400).json({ message: 'Request already finalized' });
+    }
+
+    request.status = 'rejected';
+    await request.save();
+
+    await logAdminAction({
+      adminId: req.user.userId,
+      action: 'REJECT_SELLER',
+      targetType: 'user',
+      targetId: request.user,
+      note: `Rejected seller request for user`
+    });
+
+    res.json({
+      success: true,
+      message: 'Seller request rejected'
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/price-ranges', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { itemName, category, survival, minPrice, maxPrice } = req.body;
+
+    const priceRange = await PriceRange.create({
+      itemName,
+      category,
+      survival,
+      minPrice,
+      maxPrice,
+      createdBy: req.user.userId
+    });
+
+    res.json(priceRange);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/price-ranges', async (req, res) => {
+  try {
+    const priceRanges = await PriceRange.find({ active: true });
+    res.json(priceRanges);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/listings', async (req, res) => {
+  try {
+    const { survival, category, itemName } = req.query;
+
+    // Only show active listings to buyers (exclude disabled_by_admin and removed)
+    const query = { status: 'active' };
+
+    if (survival) {
+      query.survival = survival;
+    }
+
+    if (category) {
+      query.category = category;
+    }
+
+    if (itemName) {
+      query.itemName = itemName;
+    }
+
+    const listings = await ItemListing.find(query).populate('seller', 'discordUsername');
+
+    res.json({
+      success: true,
+      listings
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/listings/:listingId', protect, async (req, res) => {
+  try {
+    const { listingId } = req.params;
+
+    const listing = await ItemListing.findById(listingId).populate('seller', 'discordUsername');
+
+    if (!listing) {
+      return res.status(404).json({ message: 'Listing not found' });
+    }
+
+    // Block access to disabled or removed listings
+    if (listing.status !== 'active') {
+      return res.status(404).json({ message: 'Listing not found' });
+    }
+
+    res.json({
+      success: true,
+      listing: {
+        _id: listing._id,
+        title: listing.title,
+        itemName: listing.itemName,
+        category: listing.category,
+        survival: listing.survival,
+        price: listing.price,
+        status: listing.status,
+        seller: listing.seller
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/listings', protect, authorizeRoles('seller'), async (req, res) => {
+  try {
+    const { title, itemName, category, survival, price } = req.body;
+
+    // Validate required fields
+    if (!title || !itemName || !category || !survival || !price) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+
+    // Validate price is positive
+    if (price <= 0) {
+      return res.status(400).json({ message: 'Price must be greater than 0' });
+    }
+
+    // Validate category exists and is active
+    const categoryDoc = await Category.findOne({ name: category, active: true });
+    if (!categoryDoc) {
+      return res.status(400).json({ message: 'Invalid or inactive category' });
+    }
+
+    // Validate survival exists and is active
+    const survivalDoc = await Survival.findOne({ name: survival, active: true });
+    if (!survivalDoc) {
+      return res.status(400).json({ message: 'Invalid or inactive survival/world' });
+    }
+
+    const listing = await ItemListing.create({
+      title,
+      itemName,
+      category,
+      survival,
+      price,
+      seller: req.user.userId,
+      status: 'active'
+    });
+
+    res.json({
+      success: true,
+      listing
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/orders', protect, authorizeRoles('user', 'seller'), async (req, res) => {
+  try {
+    const { listingId } = req.body;
+
+    const listing = await ItemListing.findById(listingId);
+
+    if (!listing) {
+      return res.status(404).json({ message: 'Listing not found' });
+    }
+
+    // Block orders for non-active listings (including disabled_by_admin)
+    if (listing.status !== 'active') {
+      return res.status(400).json({ 
+        message: listing.status === 'disabled_by_admin' 
+          ? 'This listing has been removed by admin' 
+          : 'Listing not available' 
+      });
+    }
+
+    if (listing.seller.toString() === req.user.userId) {
+      return res.status(400).json({ message: 'Cannot order your own listing' });
+    }
+
+    const order = await Order.create({
+      buyer: req.user.userId,
+      seller: listing.seller,
+      listing: listing._id,
+      status: 'pending_payment'
+    });
+
+    listing.status = 'sold';
+    await listing.save();
+
+    res.json({
+      success: true,
+      order
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/buyer/orders', protect, authorizeRoles('user'), async (req, res) => {
+  try {
+    const orders = await Order.find({ buyer: req.user.userId })
+      .populate('listing', 'title price')
+      .populate('seller', 'discordUsername')
+      .populate('middleman', 'discordUsername')
+      .sort({ createdAt: -1 })
+      .select('_id status listing seller middleman createdAt');
+
+    res.json({
+      success: true,
+      orders
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/orders/:orderId', protect, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const order = await Order.findById(orderId)
+      .populate('buyer', 'discordUsername discordId')
+      .populate('seller', 'discordUsername discordId')
+      .populate('middleman', 'discordUsername discordId')
+      .populate('listing');
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Access control: Allow only buyer, seller, assigned middleman, or admin
+    const isBuyer = order.buyer._id.toString() === req.user.userId;
+    const isSeller = order.seller._id.toString() === req.user.userId;
+    const isMiddleman = order.middleman && order.middleman._id.toString() === req.user.userId;
+    const isAdmin = req.user.role === 'admin';
+
+    if (!isBuyer && !isSeller && !isMiddleman && !isAdmin) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+
+    res.json({
+      success: true,
+      order: {
+        _id: order._id,
+        status: order.status,
+        listing: order.listing,
+        buyer: order.buyer,
+        seller: order.seller,
+        middleman: order.middleman,
+        createdAt: order.createdAt,
+        updatedAt: order.updatedAt
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/orders/:orderId/assign-middleman', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { middlemanId } = req.body;
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (order.status !== 'paid' && order.status !== 'pending_payment') {
+      return res.status(400).json({ message: 'Order not eligible for middleman assignment' });
+    }
+
+    const middleman = await User.findById(middlemanId);
+    if (!middleman) {
+      return res.status(404).json({ message: 'Middleman not found' });
+    }
+
+    order.middleman = middlemanId;
+    await order.save();
+
+    await logAdminAction({
+      adminId: req.user.userId,
+      action: 'ASSIGN_MIDDLEMAN',
+      targetType: 'order',
+      targetId: orderId
+    });
+
+    res.json({
+      success: true,
+      message: 'Middleman assigned'
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/users/:userId/make-middleman', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.role === 'admin') {
+      return res.status(400).json({ message: 'Cannot assign admin as middleman' });
+    }
+
+    user.role = 'middleman';
+    await user.save();
+
+    await logAdminAction({
+      adminId: req.user.userId,
+      action: 'MAKE_MIDDLEMAN',
+      targetType: 'user',
+      targetId: userId,
+      note: `Assigned middleman role to user`
+    });
+
+    res.json({
+      success: true,
+      message: 'Middleman added'
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/users/:userId/remove-middleman', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    user.role = 'user';
+    await user.save();
+
+    await logAdminAction({
+      adminId: req.user.userId,
+      action: 'REMOVE_MIDDLEMAN',
+      targetType: 'user',
+      targetId: userId,
+      note: `Removed middleman role from user`
+    });
+
+    res.json({
+      success: true,
+      message: 'Middleman removed'
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/users', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const users = await User.find()
+      .select('_id discordUsername role banned createdAt')
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      users
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/orders', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { status } = req.query;
+    const query = {};
+    
+    // Filter by status if provided, otherwise get all non-completed orders
+    if (status) {
+      query.status = status;
+    } else {
+      query.status = { $ne: 'completed' };
+    }
+
+    const orders = await Order.find(query)
+      .populate('buyer', 'discordUsername')
+      .populate('seller', 'discordUsername')
+      .populate('middleman', 'discordUsername')
+      .populate('listing', 'title price')
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      orders
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/users/middlemen', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const middlemen = await User.find({
+      role: 'middleman',
+      banned: false
+    }).select('_id discordUsername reputation');
+
+    res.json({
+      success: true,
+      middlemen
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/orders/:orderId/collect', protect, authorizeRoles('middleman'), async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (order.middleman?.toString() !== req.user.userId) {
+      return res.status(403).json({ message: 'Not assigned to this order' });
+    }
+
+    if (order.status !== 'paid') {
+      return res.status(400).json({ message: 'Order must be paid before collection' });
+    }
+
+    order.status = 'item_collected';
+    await order.save();
+
+    res.json({
+      success: true,
+      message: 'Item collected'
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/orders/:orderId/deliver', protect, authorizeRoles('middleman'), async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (order.middleman?.toString() !== req.user.userId) {
+      return res.status(403).json({ message: 'Not assigned to this order' });
+    }
+
+    if (order.status !== 'item_collected') {
+      return res.status(400).json({ message: 'Item must be collected before delivery' });
+    }
+
+    order.status = 'item_delivered';
+    await order.save();
+
+    res.json({
+      success: true,
+      message: 'Item delivered'
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/middleman/orders', protect, authorizeRoles('middleman'), async (req, res) => {
+  try {
+    const orders = await Order.find({ middleman: req.user.userId })
+      .populate('buyer', 'discordUsername')
+      .populate('seller', 'discordUsername')
+      .populate('listing', 'title itemName')
+      .sort({ createdAt: -1 })
+      .select('_id status buyer seller listing createdAt');
+
+    res.json({
+      success: true,
+      orders
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/orders/:orderId/mark-paid', protect, authorizeRoles('middleman'), async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (order.middleman?.toString() !== req.user.userId) {
+      return res.status(403).json({ message: 'Not assigned to this order' });
+    }
+
+    if (order.status !== 'pending_payment') {
+      return res.status(400).json({ message: 'Order already paid or invalid state' });
+    }
+
+    order.status = 'paid';
+    await order.save();
+
+    res.json({
+      success: true,
+      message: 'Order marked as paid'
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/orders/:orderId/complete', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const order = await Order.findById(orderId).populate('listing');
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (order.status !== 'item_delivered') {
+      return res.status(400).json({ message: 'Order not ready for completion' });
+    }
+
+    const settings = await Settings.findOne();
+    const commissionPercent = settings?.commissionPercent || 20;
+
+    const itemPrice = order.listing.price;
+    const commissionAmount = (itemPrice * commissionPercent) / 100;
+    const sellerPayout = itemPrice - commissionAmount;
+
+    const transaction = await Transaction.create({
+      order: order._id,
+      buyer: order.buyer,
+      seller: order.seller,
+      middleman: order.middleman,
+      itemPrice,
+      commissionPercent,
+      commissionAmount,
+      sellerPayout,
+      paymentMethod: 'UPI'
+    });
+
+    order.status = 'completed';
+    await order.save();
+
+    await logAdminAction({
+      adminId: req.user.userId,
+      action: 'COMPLETE_ORDER',
+      targetType: 'order',
+      targetId: orderId
+    });
+
+    res.json({
+      success: true,
+      transaction
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/transactions', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const transactions = await Transaction.find()
+      .populate('buyer', 'discordUsername')
+      .populate('seller', 'discordUsername')
+      .populate('middleman', 'discordUsername')
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      transactions
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/transactions/summary', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const transactions = await Transaction.find();
+
+    const totalTransactions = transactions.length;
+    const totalRevenue = transactions.reduce((sum, t) => sum + t.itemPrice, 0);
+    const totalCommission = transactions.reduce((sum, t) => sum + t.commissionAmount, 0);
+    const totalSellerPayout = transactions.reduce((sum, t) => sum + t.sellerPayout, 0);
+    const pendingSellerPayout = transactions
+      .filter(t => t.status === 'recorded')
+      .reduce((sum, t) => sum + t.sellerPayout, 0);
+
+    res.json({
+      success: true,
+      summary: {
+        totalTransactions,
+        totalRevenue,
+        totalCommission,
+        totalSellerPayout,
+        pendingSellerPayout
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/settings', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    let settings = await Settings.findOne();
+    
+    // If no settings exist, return default
+    if (!settings) {
+      return res.json({
+        success: true,
+        settings: {
+          commissionPercent: 20
+        }
+      });
+    }
+
+    res.json({
+      success: true,
+      settings: {
+        commissionPercent: settings.commissionPercent
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.put('/settings/commission', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { commissionPercent } = req.body;
+
+    if (typeof commissionPercent !== 'number') {
+      return res.status(400).json({ message: 'Commission must be a number' });
+    }
+
+    if (commissionPercent < 5 || commissionPercent > 40) {
+      return res.status(400).json({ message: 'Commission must be between 5 and 40' });
+    }
+
+    let settings = await Settings.findOne();
+    
+    const oldCommission = settings?.commissionPercent;
+    
+    if (settings) {
+      settings.commissionPercent = commissionPercent;
+      await settings.save();
+    } else {
+      settings = await Settings.create({ commissionPercent });
+    }
+
+    await logAdminAction({
+      adminId: req.user.userId,
+      action: 'UPDATE_COMMISSION',
+      targetType: 'settings',
+      targetId: settings._id,
+      note: oldCommission 
+        ? `Updated commission from ${oldCommission}% to ${commissionPercent}%`
+        : `Set commission to ${commissionPercent}%`
+    });
+
+    res.json({
+      success: true,
+      commissionPercent: settings.commissionPercent
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ==================== CATEGORIES APIs ====================
+// Public endpoint for sellers to get active categories
+router.get('/settings/categories', async (req, res) => {
+  try {
+    const categories = await Category.find({ active: true })
+      .select('name')
+      .sort({ name: 1 });
+    
+    res.json({
+      success: true,
+      categories: categories.map(cat => cat.name)
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Admin: Get all categories
+router.get('/settings/categories/all', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const categories = await Category.find()
+      .populate('createdBy', 'discordUsername')
+      .sort({ createdAt: -1 });
+    
+    res.json({
+      success: true,
+      categories
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Admin: Create category
+router.post('/settings/categories', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { name } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ message: 'Category name is required' });
+    }
+
+    const existingCategory = await Category.findOne({ name: name.trim() });
+    if (existingCategory) {
+      return res.status(400).json({ message: 'Category already exists' });
+    }
+
+    const category = await Category.create({
+      name: name.trim(),
+      createdBy: req.user.userId
+    });
+
+    await logAdminAction({
+      adminId: req.user.userId,
+      action: 'CREATE_CATEGORY',
+      targetType: 'category',
+      targetId: category._id,
+      note: `Created category: ${category.name}`
+    });
+
+    res.json({
+      success: true,
+      category
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Admin: Update category
+router.put('/settings/categories/:id', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ message: 'Category name is required' });
+    }
+
+    const category = await Category.findById(id);
+    if (!category) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+
+    const existingCategory = await Category.findOne({ name: name.trim(), _id: { $ne: id } });
+    if (existingCategory) {
+      return res.status(400).json({ message: 'Category name already exists' });
+    }
+
+    const oldName = category.name;
+    category.name = name.trim();
+    await category.save();
+
+    await logAdminAction({
+      adminId: req.user.userId,
+      action: 'UPDATE_CATEGORY',
+      targetType: 'category',
+      targetId: category._id,
+      note: `Renamed category from "${oldName}" to "${category.name}"`
+    });
+
+    res.json({
+      success: true,
+      category
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Admin: Disable/Enable category
+router.post('/settings/categories/:id/disable', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const category = await Category.findById(id);
+    if (!category) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+
+    category.active = !category.active;
+    await category.save();
+
+    await logAdminAction({
+      adminId: req.user.userId,
+      action: category.active ? 'ENABLE_CATEGORY' : 'DISABLE_CATEGORY',
+      targetType: 'category',
+      targetId: category._id,
+      note: `${category.active ? 'Enabled' : 'Disabled'} category: ${category.name}`
+    });
+
+    res.json({
+      success: true,
+      category
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ==================== SURVIVALS APIs ====================
+// Public endpoint for sellers to get active survivals
+router.get('/settings/survivals', async (req, res) => {
+  try {
+    const survivals = await Survival.find({ active: true })
+      .select('name')
+      .sort({ name: 1 });
+    
+    res.json({
+      success: true,
+      survivals: survivals.map(sur => sur.name)
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Admin: Get all survivals
+router.get('/settings/survivals/all', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const survivals = await Survival.find()
+      .populate('createdBy', 'discordUsername')
+      .sort({ createdAt: -1 });
+    
+    res.json({
+      success: true,
+      survivals
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Admin: Create survival
+router.post('/settings/survivals', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { name } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ message: 'Survival name is required' });
+    }
+
+    const existingSurvival = await Survival.findOne({ name: name.trim() });
+    if (existingSurvival) {
+      return res.status(400).json({ message: 'Survival already exists' });
+    }
+
+    const survival = await Survival.create({
+      name: name.trim(),
+      createdBy: req.user.userId
+    });
+
+    await logAdminAction({
+      adminId: req.user.userId,
+      action: 'CREATE_SURVIVAL',
+      targetType: 'survival',
+      targetId: survival._id,
+      note: `Created survival: ${survival.name}`
+    });
+
+    res.json({
+      success: true,
+      survival
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Admin: Update survival
+router.put('/settings/survivals/:id', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ message: 'Survival name is required' });
+    }
+
+    const survival = await Survival.findById(id);
+    if (!survival) {
+      return res.status(404).json({ message: 'Survival not found' });
+    }
+
+    const existingSurvival = await Survival.findOne({ name: name.trim(), _id: { $ne: id } });
+    if (existingSurvival) {
+      return res.status(400).json({ message: 'Survival name already exists' });
+    }
+
+    const oldName = survival.name;
+    survival.name = name.trim();
+    await survival.save();
+
+    await logAdminAction({
+      adminId: req.user.userId,
+      action: 'UPDATE_SURVIVAL',
+      targetType: 'survival',
+      targetId: survival._id,
+      note: `Renamed survival from "${oldName}" to "${survival.name}"`
+    });
+
+    res.json({
+      success: true,
+      survival
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Admin: Disable/Enable survival
+router.post('/settings/survivals/:id/disable', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const survival = await Survival.findById(id);
+    if (!survival) {
+      return res.status(404).json({ message: 'Survival not found' });
+    }
+
+    survival.active = !survival.active;
+    await survival.save();
+
+    await logAdminAction({
+      adminId: req.user.userId,
+      action: survival.active ? 'ENABLE_SURVIVAL' : 'DISABLE_SURVIVAL',
+      targetType: 'survival',
+      targetId: survival._id,
+      note: `${survival.active ? 'Enabled' : 'Disabled'} survival: ${survival.name}`
+    });
+
+    res.json({
+      success: true,
+      survival
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/transactions/:transactionId/mark-paid', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { transactionId } = req.params;
+
+    const transaction = await Transaction.findById(transactionId);
+
+    if (!transaction) {
+      return res.status(404).json({ message: 'Transaction not found' });
+    }
+
+    if (transaction.status !== 'recorded') {
+      return res.status(400).json({ message: 'Payout already completed' });
+    }
+
+    transaction.status = 'paid_out';
+    await transaction.save();
+
+    await logAdminAction({
+      adminId: req.user.userId,
+      action: 'MARK_PAYOUT',
+      targetType: 'transaction',
+      targetId: transactionId
+    });
+
+    res.json({
+      success: true,
+      message: 'Seller payout marked as paid'
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/users/:userId/ban', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Prevent self-ban
+    if (userId === req.user.userId) {
+      return res.status(400).json({ message: 'Cannot ban yourself' });
+    }
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    user.banned = true;
+    await user.save();
+
+    await logAdminAction({
+      adminId: req.user.userId,
+      action: 'BAN_USER',
+      targetType: 'user',
+      targetId: userId
+    });
+
+    res.json({
+      success: true,
+      message: 'User banned'
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/users/:userId/unban', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    user.banned = false;
+    await user.save();
+
+    await logAdminAction({
+      adminId: req.user.userId,
+      action: 'UNBAN_USER',
+      targetType: 'user',
+      targetId: userId
+    });
+
+    res.json({
+      success: true,
+      message: 'User unbanned'
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Admin: Get all listings (including disabled)
+router.get('/admin/listings', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const listings = await ItemListing.find({})
+      .populate('seller', 'discordUsername discordId')
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      listings
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/listings/:listingId/disable', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { listingId } = req.params;
+
+    const listing = await ItemListing.findById(listingId);
+
+    if (!listing) {
+      return res.status(404).json({ message: 'Listing not found' });
+    }
+
+    // Set status to disabled_by_admin (soft delete - remains in DB)
+    listing.status = 'disabled_by_admin';
+    await listing.save();
+
+    await logAdminAction({
+      adminId: req.user.userId,
+      action: 'DISABLE_LISTING',
+      targetType: 'listing',
+      targetId: listingId,
+      note: `Disabled listing: ${listing.title}`
+    });
+
+    res.json({
+      success: true,
+      message: 'Listing disabled by admin'
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/listings/:listingId/remove', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { listingId } = req.params;
+
+    const listing = await ItemListing.findById(listingId);
+
+    if (!listing) {
+      return res.status(404).json({ message: 'Listing not found' });
+    }
+
+    await ItemListing.findByIdAndDelete(listingId);
+
+    await logAdminAction({
+      adminId: req.user.userId,
+      action: 'REMOVE_LISTING',
+      targetType: 'listing',
+      targetId: listingId
+    });
+
+    res.json({
+      success: true,
+      message: 'Listing removed permanently'
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/orders/:orderId/dispute', protect, authorizeRoles('user', 'seller'), async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { reason } = req.body;
+
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    if (order.buyer.toString() !== req.user.userId && order.seller.toString() !== req.user.userId) {
+      return res.status(403).json({ message: 'Not authorized to dispute this order' });
+    }
+
+    const existingDispute = await Dispute.findOne({ order: orderId });
+    if (existingDispute) {
+      return res.status(400).json({ message: 'Dispute already exists for this order' });
+    }
+
+    const raisedBy = req.user.userId;
+    const against = order.buyer.toString() === req.user.userId ? order.seller : order.buyer;
+
+    const dispute = await Dispute.create({
+      order: orderId,
+      raisedBy,
+      against,
+      reason
+    });
+
+    res.json({
+      success: true,
+      dispute
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/disputes', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const disputes = await Dispute.find()
+      .populate('order')
+      .populate('raisedBy', 'discordUsername')
+      .populate('against', 'discordUsername');
+
+    res.json({
+      success: true,
+      disputes
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/disputes/:disputeId/resolve', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { disputeId } = req.params;
+    const { resolutionNote } = req.body;
+
+    const dispute = await Dispute.findById(disputeId);
+
+    if (!dispute) {
+      return res.status(404).json({ message: 'Dispute not found' });
+    }
+
+    dispute.status = 'resolved';
+    dispute.resolutionNote = resolutionNote;
+    await dispute.save();
+
+    res.json({
+      success: true,
+      message: 'Dispute resolved'
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/audit-logs', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const logs = await AuditLog.find()
+      .populate('admin', 'discordUsername')
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      logs
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+export default router;
+
