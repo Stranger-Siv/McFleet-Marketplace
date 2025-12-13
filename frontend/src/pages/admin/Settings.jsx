@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import apiClient from '../../api/axios';
 import ConfirmationModal from '../../components/ConfirmationModal';
+import { useResponsive } from '../../hooks/useResponsive';
 
 function Settings() {
+  const { isMobile, isTablet } = useResponsive();
   const [activeTab, setActiveTab] = useState('commission'); // 'commission' or 'marketplace'
   const [commissionPercent, setCommissionPercent] = useState('');
   const [loading, setLoading] = useState(true);
@@ -351,7 +353,7 @@ function Settings() {
     backgroundColor: '#1e2338',
     border: '1px solid #2d3447',
     borderRadius: '12px',
-    padding: '28px',
+    padding: isMobile ? '20px' : isTablet ? '24px' : '28px',
     marginBottom: '20px',
     boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4)'
   };
@@ -580,14 +582,23 @@ function Settings() {
           ) : (
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
-              gap: '24px'
+              gridTemplateColumns: isMobile 
+                ? '1fr' 
+                : isTablet 
+                  ? 'repeat(2, 1fr)' 
+                  : 'repeat(auto-fit, minmax(400px, 1fr))',
+              gap: isMobile ? '20px' : isTablet ? '20px' : '24px'
             }}>
               {/* Categories Management */}
               <div style={sectionStyle}>
                 <div style={sectionTitleStyle}>Item Categories</div>
 
-                <form onSubmit={handleCreateCategory} style={{ marginBottom: '20px', display: 'flex', gap: '8px' }}>
+                <form onSubmit={handleCreateCategory} style={{ 
+                  marginBottom: '20px', 
+                  display: 'flex', 
+                  flexDirection: isMobile ? 'column' : 'row',
+                  gap: isMobile ? '12px' : '8px' 
+                }}>
                   <input
                     type="text"
                     value={newCategoryName}
@@ -603,7 +614,7 @@ function Settings() {
                       e.target.style.boxShadow = 'none';
                     }}
                   />
-                  <button type="submit" style={buttonStyle}>
+                  <button type="submit" style={{ ...buttonStyle, width: isMobile ? '100%' : 'auto' }}>
                     Add Category
                   </button>
                 </form>
@@ -615,9 +626,10 @@ function Settings() {
                     {categories.map((category) => (
                       <div key={category._id} style={{
                         display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        padding: '14px',
+                        flexDirection: isMobile ? 'column' : 'row',
+                        alignItems: isMobile ? 'stretch' : 'center',
+                        gap: isMobile ? '12px' : '12px',
+                        padding: isMobile ? '12px' : '14px',
                         border: '1px solid #2d3447',
                         borderRadius: '8px',
                         backgroundColor: category.active ? '#1a1f35' : '#131829'
@@ -740,7 +752,12 @@ function Settings() {
               <div style={sectionStyle}>
                 <div style={sectionTitleStyle}>Survivals / Worlds</div>
 
-                <form onSubmit={handleCreateSurvival} style={{ marginBottom: '20px', display: 'flex', gap: '8px' }}>
+                <form onSubmit={handleCreateSurvival} style={{ 
+                  marginBottom: '20px', 
+                  display: 'flex', 
+                  flexDirection: isMobile ? 'column' : 'row',
+                  gap: isMobile ? '12px' : '8px' 
+                }}>
                   <input
                     type="text"
                     value={newSurvivalName}
@@ -756,7 +773,7 @@ function Settings() {
                       e.target.style.boxShadow = 'none';
                     }}
                   />
-                  <button type="submit" style={buttonStyle}>
+                  <button type="submit" style={{ ...buttonStyle, width: isMobile ? '100%' : 'auto' }}>
                     Add Survival
                   </button>
                 </form>

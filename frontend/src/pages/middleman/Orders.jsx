@@ -32,8 +32,8 @@ function Orders() {
     fetchOrders();
   }, []);
 
-  // Set up polling (7 seconds interval)
-  usePolling(fetchOrders, 7000);
+  // Set up polling (30 seconds interval)
+  usePolling(fetchOrders, 30000);
 
   const handleViewOrder = (orderId) => {
     navigate(`/middleman/orders/${orderId}`);
@@ -52,6 +52,8 @@ function Orders() {
       case 'completed':
         return '#059669'; // dark green
       case 'cancelled':
+        return '#ef4444'; // red
+      case 'disputed':
         return '#ef4444'; // red
       default:
         return '#6b7280'; // gray

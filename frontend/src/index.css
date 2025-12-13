@@ -91,3 +91,31 @@ body {
   outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
 }
+
+/* Responsive breakpoints */
+/* Mobile: < 640px */
+/* Tablet: 640px - 1024px */
+/* Desktop: > 1024px */
+/* Large: > 1440px */
+
+/* Utility classes for responsive design */
+@media (max-width: 639px) {
+  /* Mobile styles */
+  .hide-mobile {
+    display: none !important;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  /* Tablet styles */
+  .hide-tablet {
+    display: none !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  /* Desktop styles */
+  .hide-desktop {
+    display: none !important;
+  }
+}

@@ -36,8 +36,8 @@ function Listings() {
     fetchListings();
   }, []);
 
-  // Set up polling (7 seconds interval)
-  usePolling(fetchListings, 7000);
+  // Set up polling (30 seconds interval)
+  usePolling(fetchListings, 30000);
 
   const handleDisableListingClick = (listingId, listingTitle) => {
     setConfirmModal({

@@ -3,11 +3,11 @@ import { useEffect, useRef, useCallback } from 'react';
 /**
  * Custom hook for polling data at regular intervals
  * @param {Function} fetchFn - Function to fetch data
- * @param {number} intervalMs - Polling interval in milliseconds (default: 7000ms = 7 seconds)
+ * @param {number} intervalMs - Polling interval in milliseconds (default: 30000ms = 30 seconds)
  * @param {boolean} enabled - Whether polling is enabled (default: true)
  * @returns {Function} - Manual refresh function
  */
-export function usePolling(fetchFn, intervalMs = 7000, enabled = true) {
+export function usePolling(fetchFn, intervalMs = 30000, enabled = true) {
   const intervalRef = useRef(null);
   const isFetchingRef = useRef(false);
   const fetchFnRef = useRef(fetchFn);

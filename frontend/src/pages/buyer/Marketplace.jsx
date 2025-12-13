@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import apiClient from '../../api/axios';
 import SkeletonCard from '../../components/skeletons/SkeletonCard';
 import CategoryIcon from '../../components/CategoryIcon';
+import { useResponsive } from '../../hooks/useResponsive';
 
 function Marketplace() {
   const [listings, setListings] = useState([]);
@@ -14,6 +15,8 @@ function Marketplace() {
   const [priceFilter, setPriceFilter] = useState('all');
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { isMobile, isTablet } = useResponsive();
+  const [filtersOpen, setFiltersOpen] = useState(!isMobile);
 
   // Get search query from URL
   const searchQuery = searchParams.get('search') || '';
@@ -134,14 +137,14 @@ function Marketplace() {
     backgroundColor: '#1e2338',
     border: '1px solid #2d3447',
     borderRadius: '12px',
-    padding: '20px',
-    marginBottom: '32px',
+    padding: isMobile ? '16px' : '20px',
+    marginBottom: isMobile ? '20px' : '32px',
     boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4)'
   };
 
   const filtersRowStyle = {
     display: 'flex',
-    gap: '16px',
+    gap: isMobile ? '8px' : '16px',
     alignItems: 'center',
     flexWrap: 'wrap'
   };
@@ -178,8 +181,12 @@ function Marketplace() {
 
   const gridStyle = {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-    gap: '24px'
+    gridTemplateColumns: isMobile
+      ? '1fr'
+      : isTablet
+        ? 'repeat(2, 1fr)'
+        : 'repeat(auto-fill, minmax(300px, 1fr))',
+    gap: isMobile ? '16px' : isTablet ? '20px' : '24px'
   };
 
   const cardStyle = {
@@ -205,12 +212,12 @@ function Marketplace() {
   };
 
   const cardContentStyle = {
-    padding: '20px'
+    padding: isMobile ? '16px' : '20px'
   };
 
   const cardTitleStyle = {
     color: '#ffffff',
-    fontSize: '18px',
+    fontSize: isMobile ? '16px' : '18px',
     fontWeight: '600',
     marginBottom: '12px',
     lineHeight: '1.4'
@@ -245,7 +252,7 @@ function Marketplace() {
 
   const priceStyle = {
     color: '#fbbf24',
-    fontSize: '24px',
+    fontSize: isMobile ? '20px' : '24px',
     fontWeight: '700'
   };
 
@@ -345,66 +352,92 @@ function Marketplace() {
 
       {/* Filters Section */}
       <div style={filtersSectionStyle}>
-        <div style={filtersRowStyle}>
-          <span style={filterLabelStyle}>Category:</span>
-          {categories.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              style={{
-                ...categoryChipStyle(selectedCategory === cat),
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}
-              onMouseEnter={(e) => {
-                if (selectedCategory !== cat) {
-                  e.target.style.backgroundColor = '#252b42';
-                  e.target.style.color = '#ffffff';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (selectedCategory !== cat) {
-                  e.target.style.backgroundColor = '#1a1f35';
-                  e.target.style.color = '#b8bcc8';
-                }
-              }}
-            >
-              {cat !== 'all' && <CategoryIcon category={cat} size={16} />}
-              {cat === 'all' ? 'All' : cat}
-            </button>
-          ))}
-        </div>
-
-        <div style={{ ...filtersRowStyle, marginTop: '16px' }}>
-          <span style={filterLabelStyle}>Price:</span>
-          <select
-            value={priceFilter}
-            onChange={(e) => setPriceFilter(e.target.value)}
-            style={selectStyle}
-            onFocus={(e) => e.target.style.borderColor = '#fbbf24'}
-            onBlur={(e) => e.target.style.borderColor = '#2d3447'}
+        {isMobile && (
+          <button
+            onClick={() => setFiltersOpen(!filtersOpen)}
+            style={{
+              width: '100%',
+              padding: '12px',
+              backgroundColor: '#252b42',
+              border: '1px solid #2d3447',
+              borderRadius: '8px',
+              color: '#ffffff',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: filtersOpen ? '16px' : '0'
+            }}
           >
-            <option value="all">All Prices</option>
-            <option value="low">Under ₹1,000</option>
-            <option value="medium">₹1,000 - ₹5,000</option>
-            <option value="high">Above ₹5,000</option>
-          </select>
+            <span>Filters</span>
+            <span style={{ fontSize: '18px' }}>{filtersOpen ? '−' : '+'}</span>
+          </button>
+        )}
+        {(filtersOpen || !isMobile) && (
+          <>
+            <div style={filtersRowStyle}>
+              <span style={{ ...filterLabelStyle, width: isMobile ? '100%' : 'auto', marginBottom: isMobile ? '8px' : '0' }}>Category:</span>
+              {categories.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  style={{
+                    ...categoryChipStyle(selectedCategory === cat),
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (selectedCategory !== cat) {
+                      e.target.style.backgroundColor = '#252b42';
+                      e.target.style.color = '#ffffff';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (selectedCategory !== cat) {
+                      e.target.style.backgroundColor = '#1a1f35';
+                      e.target.style.color = '#b8bcc8';
+                    }
+                  }}
+                >
+                  {cat !== 'all' && <CategoryIcon category={cat} size={16} />}
+                  {cat === 'all' ? 'All' : cat}
+                </button>
+              ))}
+            </div>
 
-          <span style={{ ...filterLabelStyle, marginLeft: '24px' }}>Sort:</span>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            style={selectStyle}
-            onFocus={(e) => e.target.style.borderColor = '#fbbf24'}
-            onBlur={(e) => e.target.style.borderColor = '#2d3447'}
-          >
-            <option value="recommended">Recommended</option>
-            <option value="price-low">Price: Low to High</option>
-            <option value="price-high">Price: High to Low</option>
-            <option value="newest">Newest First</option>
-          </select>
-        </div>
+            <div style={{ ...filtersRowStyle, marginTop: isMobile ? '12px' : '16px' }}>
+              <span style={{ ...filterLabelStyle, width: isMobile ? '100%' : 'auto', marginBottom: isMobile ? '8px' : '0' }}>Price:</span>
+              <select
+                value={priceFilter}
+                onChange={(e) => setPriceFilter(e.target.value)}
+                style={{ ...selectStyle, width: isMobile ? '100%' : 'auto', minWidth: isMobile ? 'auto' : '150px' }}
+                onFocus={(e) => e.target.style.borderColor = '#fbbf24'}
+                onBlur={(e) => e.target.style.borderColor = '#2d3447'}
+              >
+                <option value="all">All Prices</option>
+                <option value="low">Under ₹1,000</option>
+                <option value="medium">₹1,000 - ₹5,000</option>
+                <option value="high">Above ₹5,000</option>
+              </select>
+              <span style={{ ...filterLabelStyle, marginLeft: isMobile ? '0' : '24px', width: isMobile ? '100%' : 'auto', marginTop: isMobile ? '12px' : '0', marginBottom: isMobile ? '8px' : '0' }}>Sort:</span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                style={{ ...selectStyle, width: isMobile ? '100%' : 'auto', minWidth: isMobile ? 'auto' : '150px' }}
+                onFocus={(e) => e.target.style.borderColor = '#fbbf24'}
+                onBlur={(e) => e.target.style.borderColor = '#2d3447'}
+              >
+                <option value="recommended">Recommended</option>
+                <option value="price-low">Price: Low to High</option>
+                <option value="price-high">Price: High to Low</option>
+                <option value="newest">Newest First</option>
+              </select>
+            </div>
+          </>
+        )}
       </div>
 
       {loading ? (

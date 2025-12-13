@@ -25,6 +25,7 @@ import AdminTransactions from '../pages/admin/Transactions';
 import Settings from '../pages/admin/Settings';
 import Listings from '../pages/admin/Listings';
 import AuditLogs from '../pages/admin/AuditLogs';
+import Disputes from '../pages/admin/Disputes';
 import AdminOrderDetail from '../pages/admin/OrderDetail';
 import Login from '../pages/Login';
 import AuthSuccess from '../pages/AuthSuccess';
@@ -125,6 +126,7 @@ function AppRoutes() {
         <Route path="orders" element={<AdminOrders />} />
         <Route path="orders/:orderId" element={<AdminOrderDetail />} />
         <Route path="transactions" element={<AdminTransactions />} />
+        <Route path="disputes" element={<Disputes />} />
         <Route path="audit-logs" element={<AuditLogs />} />
         <Route path="settings" element={<Settings />} />
       </Route>

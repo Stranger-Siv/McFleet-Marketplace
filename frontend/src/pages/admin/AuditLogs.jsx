@@ -31,8 +31,8 @@ function AuditLogs() {
     fetchLogs();
   }, []);
 
-  // Set up polling (10 seconds interval - less frequent than other pages)
-  usePolling(fetchLogs, 10000);
+  // Set up polling (30 seconds interval)
+  usePolling(fetchLogs, 30000);
 
   const getActionLabel = (action) => {
     const actionLabels = {

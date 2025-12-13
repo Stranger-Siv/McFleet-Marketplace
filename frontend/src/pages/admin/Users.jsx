@@ -37,8 +37,8 @@ function Users() {
     fetchUsers();
   }, []);
 
-  // Set up polling (7 seconds interval)
-  usePolling(fetchUsers, 7000);
+  // Set up polling (30 seconds interval)
+  usePolling(fetchUsers, 30000);
 
   const handleBanClick = (userId, username) => {
     // Prevent self-ban

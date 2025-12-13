@@ -1,10 +1,14 @@
+import { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useResponsive } from '../hooks/useResponsive';
 
 function AdminLayout() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { isMobile, isTablet } = useResponsive();
 
   const handleLogout = () => {
     logout();
@@ -14,7 +18,7 @@ function AdminLayout() {
   const navStyle = {
     backgroundColor: '#131829',
     backdropFilter: 'blur(10px)',
-    padding: '16px 32px',
+    padding: isMobile ? '12px 16px' : isTablet ? '14px 24px' : '16px 32px',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -22,7 +26,9 @@ function AdminLayout() {
     borderBottom: '1px solid #2d3447',
     position: 'sticky',
     top: 0,
-    zIndex: 1000
+    zIndex: 1000,
+    flexWrap: isMobile ? 'wrap' : 'nowrap',
+    gap: isMobile ? '12px' : '0'
   };
 
   const logoStyle = {
@@ -43,10 +49,24 @@ function AdminLayout() {
   };
 
   const navLinksStyle = {
-    display: 'flex',
-    gap: '8px',
-    alignItems: 'center',
-    flexWrap: 'wrap'
+    display: isMobile ? (mobileMenuOpen ? 'flex' : 'none') : 'flex',
+    flexDirection: isMobile ? 'column' : 'row',
+    gap: isMobile ? '8px' : '8px',
+    alignItems: isMobile ? 'stretch' : 'center',
+    flexWrap: isMobile ? 'nowrap' : 'wrap',
+    position: isMobile ? 'absolute' : 'relative',
+    top: isMobile ? '100%' : 'auto',
+    left: isMobile ? 0 : 'auto',
+    right: isMobile ? 0 : 'auto',
+    backgroundColor: isMobile ? '#131829' : 'transparent',
+    padding: isMobile ? '16px' : '0',
+    boxShadow: isMobile ? '0 4px 16px rgba(0, 0, 0, 0.4)' : 'none',
+    borderBottom: isMobile ? '1px solid #2d3447' : 'none',
+    width: isMobile ? '100%' : 'auto',
+    zIndex: isMobile ? 999 : 'auto',
+    maxHeight: isMobile ? '70vh' : 'none',
+    overflowY: isMobile ? 'auto' : 'visible',
+    order: isMobile ? 3 : 0
   };
 
   const linkStyle = {
@@ -96,10 +116,31 @@ function AdminLayout() {
 
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + '/');
 
+  const hamburgerButtonStyle = {
+    display: isMobile ? 'flex' : 'none',
+    flexDirection: 'column',
+    gap: '4px',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    padding: '8px',
+    borderRadius: '6px',
+    alignItems: 'center',
+    justifyContent: 'center'
+  };
+
+  const hamburgerLineStyle = {
+    width: '20px',
+    height: '2px',
+    backgroundColor: '#ffffff',
+    borderRadius: '2px',
+    transition: 'all 0.3s ease'
+  };
+
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0a0e27 0%, #131829 100%)' }}>
       <nav style={navStyle}>
-        <Link to="/admin/dashboard" style={logoStyle}>
+        <Link to="/admin/dashboard" style={logoStyle} onClick={() => setMobileMenuOpen(false)}>
           <div style={{
             width: '32px',
             height: '32px',
@@ -114,91 +155,107 @@ function AdminLayout() {
           }}>
             M
           </div>
-          <span style={logoTextStyle}>McFleet Admin</span>
+          <span style={{ ...logoTextStyle, display: isMobile ? 'none' : 'inline' }}>McFleet Admin</span>
         </Link>
+
+        {/* Hamburger Menu Button (Mobile Only) */}
+        {isMobile && (
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            style={hamburgerButtonStyle}
+            aria-label="Toggle menu"
+          >
+            <div style={{
+              ...hamburgerLineStyle,
+              transform: mobileMenuOpen ? 'rotate(45deg) translate(5px, 5px)' : 'none'
+            }} />
+            <div style={{
+              ...hamburgerLineStyle,
+              opacity: mobileMenuOpen ? 0 : 1
+            }} />
+            <div style={{
+              ...hamburgerLineStyle,
+              transform: mobileMenuOpen ? 'rotate(-45deg) translate(5px, -5px)' : 'none'
+            }} />
+          </button>
+        )}
         
         <div style={navLinksStyle}>
-          <Link 
-            to="/admin/dashboard" 
-            style={isActive('/admin/dashboard') ? activeLinkStyle : linkStyle}
-            onMouseEnter={(e) => !isActive('/admin/dashboard') && (e.target.style.color = '#ffffff')}
-            onMouseLeave={(e) => !isActive('/admin/dashboard') && (e.target.style.color = '#b8bcc8')}
-          >
-            Dashboard
-          </Link>
-          <Link 
-            to="/admin/seller-requests" 
-            style={isActive('/admin/seller-requests') ? activeLinkStyle : linkStyle}
-            onMouseEnter={(e) => !isActive('/admin/seller-requests') && (e.target.style.color = '#ffffff')}
-            onMouseLeave={(e) => !isActive('/admin/seller-requests') && (e.target.style.color = '#b8bcc8')}
-          >
-            Seller Requests
-          </Link>
-          <Link 
-            to="/admin/users" 
-            style={isActive('/admin/users') ? activeLinkStyle : linkStyle}
-            onMouseEnter={(e) => !isActive('/admin/users') && (e.target.style.color = '#ffffff')}
-            onMouseLeave={(e) => !isActive('/admin/users') && (e.target.style.color = '#b8bcc8')}
-          >
-            Users
-          </Link>
-          <Link 
-            to="/admin/listings" 
-            style={isActive('/admin/listings') ? activeLinkStyle : linkStyle}
-            onMouseEnter={(e) => !isActive('/admin/listings') && (e.target.style.color = '#ffffff')}
-            onMouseLeave={(e) => !isActive('/admin/listings') && (e.target.style.color = '#b8bcc8')}
-          >
-            Listings
-          </Link>
-          <Link 
-            to="/admin/orders" 
-            style={isActive('/admin/orders') ? activeLinkStyle : linkStyle}
-            onMouseEnter={(e) => !isActive('/admin/orders') && (e.target.style.color = '#ffffff')}
-            onMouseLeave={(e) => !isActive('/admin/orders') && (e.target.style.color = '#b8bcc8')}
-          >
-            Orders
-          </Link>
-          <Link 
-            to="/admin/transactions" 
-            style={isActive('/admin/transactions') ? activeLinkStyle : linkStyle}
-            onMouseEnter={(e) => !isActive('/admin/transactions') && (e.target.style.color = '#ffffff')}
-            onMouseLeave={(e) => !isActive('/admin/transactions') && (e.target.style.color = '#b8bcc8')}
-          >
-            Transactions
-          </Link>
-          <Link 
-            to="/admin/audit-logs" 
-            style={isActive('/admin/audit-logs') ? activeLinkStyle : linkStyle}
-            onMouseEnter={(e) => !isActive('/admin/audit-logs') && (e.target.style.color = '#ffffff')}
-            onMouseLeave={(e) => !isActive('/admin/audit-logs') && (e.target.style.color = '#b8bcc8')}
-          >
-            Audit Logs
-          </Link>
-          <Link 
-            to="/admin/settings" 
-            style={isActive('/admin/settings') ? activeLinkStyle : linkStyle}
-            onMouseEnter={(e) => !isActive('/admin/settings') && (e.target.style.color = '#ffffff')}
-            onMouseLeave={(e) => !isActive('/admin/settings') && (e.target.style.color = '#b8bcc8')}
-          >
-            Settings
-          </Link>
+          {[
+            { path: '/admin/dashboard', label: 'Dashboard' },
+            { path: '/admin/seller-requests', label: 'Seller Requests' },
+            { path: '/admin/users', label: 'Users' },
+            { path: '/admin/listings', label: 'Listings' },
+            { path: '/admin/orders', label: 'Orders' },
+            { path: '/admin/transactions', label: 'Transactions' },
+            { path: '/admin/disputes', label: 'Disputes' },
+            { path: '/admin/audit-logs', label: 'Audit Logs' },
+            { path: '/admin/settings', label: 'Settings' }
+          ].map(({ path, label }) => (
+            <Link
+              key={path}
+              to={path}
+              style={{
+                ...(isActive(path) ? activeLinkStyle : linkStyle),
+                width: isMobile ? '100%' : 'auto',
+                textAlign: isMobile ? 'left' : 'center',
+                padding: isMobile ? '12px 16px' : linkStyle.padding,
+                fontSize: isMobile ? '14px' : linkStyle.fontSize
+              }}
+              onClick={() => setMobileMenuOpen(false)}
+              onMouseEnter={(e) => !isActive(path) && !isMobile && (e.target.style.color = '#ffffff')}
+              onMouseLeave={(e) => !isActive(path) && !isMobile && (e.target.style.color = '#b8bcc8')}
+            >
+              {label}
+            </Link>
+          ))}
         </div>
         
-        <div style={userInfoStyle}>
-          <div style={userBadgeStyle}>
+        <div style={{
+          ...userInfoStyle,
+          flexDirection: isMobile ? 'column' : 'row',
+          width: isMobile ? '100%' : 'auto',
+          order: isMobile ? 2 : 0
+        }}>
+          <div style={{
+            ...userBadgeStyle,
+            width: isMobile ? '100%' : 'auto',
+            justifyContent: isMobile ? 'flex-start' : 'center'
+          }}>
             <span style={{ color: '#ffffff', fontWeight: '500', fontSize: '14px' }}>{user?.discordUsername || 'Admin'}</span>
           </div>
           <button 
-            onClick={handleLogout} 
-            style={logoutButtonStyle}
-            onMouseEnter={(e) => e.target.style.backgroundColor = '#dc2626'}
-            onMouseLeave={(e) => e.target.style.backgroundColor = '#ef4444'}
+            onClick={() => {
+              handleLogout();
+              setMobileMenuOpen(false);
+            }}
+            style={{
+              ...logoutButtonStyle,
+              width: isMobile ? '100%' : 'auto'
+            }}
+            onMouseEnter={(e) => !isMobile && (e.target.style.backgroundColor = '#dc2626')}
+            onMouseLeave={(e) => !isMobile && (e.target.style.backgroundColor = '#ef4444')}
           >
             Logout
           </button>
         </div>
       </nav>
-      <div style={{ padding: '32px' }}>
+      {/* Mobile Menu Overlay */}
+      {isMobile && mobileMenuOpen && (
+        <div
+          onClick={() => setMobileMenuOpen(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 998
+          }}
+        />
+      )}
+      <div style={{ padding: isMobile ? '16px' : isTablet ? '24px' : '32px' }}>
         <Outlet />
       </div>
     </div>

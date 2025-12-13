@@ -4,6 +4,7 @@ import apiClient from '../../api/axios';
 import SkeletonListingDetail from '../../components/skeletons/SkeletonListingDetail';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import CategoryIcon from '../../components/CategoryIcon';
+import { useResponsive } from '../../hooks/useResponsive';
 
 function ListingDetail() {
   const { listingId } = useParams();
@@ -13,6 +14,7 @@ function ListingDetail() {
   const [error, setError] = useState(null);
   const [orderError, setOrderError] = useState(null);
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
+  const { isMobile, isTablet } = useResponsive();
 
   useEffect(() => {
     const fetchListing = async () => {
@@ -97,9 +99,9 @@ function ListingDetail() {
 
   const mainLayoutStyle = {
     display: 'grid',
-    gridTemplateColumns: '1fr 420px',
-    gap: '32px',
-    marginBottom: '48px'
+    gridTemplateColumns: isMobile ? '1fr' : isTablet ? '1fr' : '1fr 420px',
+    gap: isMobile ? '24px' : isTablet ? '28px' : '32px',
+    marginBottom: isMobile ? '32px' : '48px'
   };
 
   const previewSectionStyle = {
@@ -112,23 +114,23 @@ function ListingDetail() {
 
   const imageContainerStyle = {
     width: '100%',
-    height: '500px',
+    height: isMobile ? '300px' : isTablet ? '400px' : '500px',
     backgroundColor: '#1a1f35',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: '120px',
+    fontSize: isMobile ? '80px' : isTablet ? '100px' : '120px',
     color: '#2d3447',
     borderBottom: '1px solid #2d3447'
   };
 
   const infoSectionStyle = {
-    padding: '32px'
+    padding: isMobile ? '20px' : isTablet ? '24px' : '32px'
   };
 
   const titleStyle = {
     color: '#ffffff',
-    fontSize: '32px',
+    fontSize: isMobile ? '24px' : isTablet ? '28px' : '32px',
     fontWeight: '700',
     marginBottom: '16px',
     lineHeight: '1.3'
@@ -136,9 +138,10 @@ function ListingDetail() {
 
   const metaStyle = {
     display: 'flex',
-    gap: '16px',
+    flexWrap: 'wrap',
+    gap: isMobile ? '8px' : '16px',
     marginBottom: '24px',
-    fontSize: '14px',
+    fontSize: isMobile ? '12px' : '14px',
     color: '#6b7280'
   };
 
@@ -169,16 +172,16 @@ function ListingDetail() {
     backgroundColor: '#1e2338',
     border: '1px solid #2d3447',
     borderRadius: '16px',
-    padding: '32px',
+    padding: isMobile ? '20px' : isTablet ? '24px' : '32px',
     boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4)',
-    position: 'sticky',
-    top: '100px',
+    position: isMobile ? 'relative' : 'sticky',
+    top: isMobile ? 'auto' : '100px',
     height: 'fit-content'
   };
 
   const priceStyle = {
     color: '#fbbf24',
-    fontSize: '48px',
+    fontSize: isMobile ? '36px' : isTablet ? '42px' : '48px',
     fontWeight: '700',
     marginBottom: '8px',
     lineHeight: '1'
@@ -368,7 +371,7 @@ function ListingDetail() {
             justifyContent: 'center',
             fontSize: '120px'
           }}>
-            <CategoryIcon category={listing.category} size={120} />
+            <CategoryIcon category={listing.category} size={isMobile ? 80 : isTablet ? 100 : 120} />
           </div>
           <div style={infoSectionStyle}>
             <h1 style={{

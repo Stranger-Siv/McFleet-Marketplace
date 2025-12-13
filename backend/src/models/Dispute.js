@@ -21,6 +21,10 @@ const disputeSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  description: {
+    type: String,
+    default: ''
+  },
   status: {
     type: String,
     enum: ['open', 'resolved'],

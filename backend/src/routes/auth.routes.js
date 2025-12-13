@@ -14,6 +14,7 @@ import AuditLog from '../models/AuditLog.js';
 import Category from '../models/Category.js';
 import Survival from '../models/Survival.js';
 import { logAdminAction } from '../utils/auditLogger.js';
+import { maskOrderData, maskListingData, maskUserData } from '../utils/dataMasking.js';
 
 const router = express.Router();
 
@@ -305,11 +306,24 @@ router.get('/listings', async (req, res) => {
       query.itemName = itemName;
     }
 
-    const listings = await ItemListing.find(query).populate('seller', 'discordUsername');
+    const listings = await ItemListing.find(query).populate('seller', 'discordUsername discordId');
+
+    // Mask seller Discord details for public/buyer access (no authenticated user)
+    // Public access = buyer role masking (no Discord details)
+    const maskedListings = listings.map(listing => {
+      const listingObj = listing.toObject();
+      if (listingObj.seller) {
+        listingObj.seller = {
+          _id: listingObj.seller._id
+          // No Discord details for public access
+        };
+      }
+      return listingObj;
+    });
 
     res.json({
       success: true,
-      listings
+      listings: maskedListings
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -320,7 +334,7 @@ router.get('/listings/:listingId', protect, async (req, res) => {
   try {
     const { listingId } = req.params;
 
-    const listing = await ItemListing.findById(listingId).populate('seller', 'discordUsername');
+    const listing = await ItemListing.findById(listingId).populate('seller', 'discordUsername discordId');
 
     if (!listing) {
       return res.status(404).json({ message: 'Listing not found' });
@@ -331,18 +345,12 @@ router.get('/listings/:listingId', protect, async (req, res) => {
       return res.status(404).json({ message: 'Listing not found' });
     }
 
+    // Mask seller Discord details based on requester role
+    const maskedListing = maskListingData(listing.toObject(), req.user.role, req.user.userId);
+
     res.json({
       success: true,
-      listing: {
-        _id: listing._id,
-        title: listing.title,
-        itemName: listing.itemName,
-        category: listing.category,
-        survival: listing.survival,
-        price: listing.price,
-        status: listing.status,
-        seller: listing.seller
-      }
+      listing: maskedListing
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -440,14 +448,19 @@ router.get('/buyer/orders', protect, authorizeRoles('user'), async (req, res) =>
   try {
     const orders = await Order.find({ buyer: req.user.userId })
       .populate('listing', 'title price')
-      .populate('seller', 'discordUsername')
-      .populate('middleman', 'discordUsername')
+      .populate('seller', 'discordUsername discordId')
+      .populate('middleman', 'discordUsername discordId')
       .sort({ createdAt: -1 })
-      .select('_id status listing seller middleman createdAt');
+      .select('_id status listing seller middleman createdAt updatedAt');
+
+    // Mask sensitive data for buyer role
+    const maskedOrders = orders.map(order => 
+      maskOrderData(order.toObject(), req.user.role, req.user.userId)
+    );
 
     res.json({
       success: true,
-      orders
+      orders: maskedOrders
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -478,18 +491,32 @@ router.get('/orders/:orderId', protect, async (req, res) => {
       return res.status(403).json({ message: 'Forbidden' });
     }
 
+    // Check for active dispute
+    const dispute = await Dispute.findOne({ 
+      order: orderId, 
+      status: 'open' 
+    }).populate('raisedBy', 'discordUsername');
+
+    // Mask sensitive data based on requester role
+    const maskedOrder = maskOrderData(order.toObject(), req.user.role, req.user.userId);
+
+    // Add dispute info if exists (masked based on role)
+    if (dispute) {
+      maskedOrder.dispute = {
+        _id: dispute._id,
+        reason: dispute.reason,
+        description: dispute.description,
+        status: dispute.status,
+        createdAt: dispute.createdAt,
+        raisedBy: maskUserData(dispute.raisedBy.toObject(), req.user.role, {
+          isOwnData: dispute.raisedBy._id.toString() === req.user.userId
+        })
+      };
+    }
+
     res.json({
       success: true,
-      order: {
-        _id: order._id,
-        status: order.status,
-        listing: order.listing,
-        buyer: order.buyer,
-        seller: order.seller,
-        middleman: order.middleman,
-        createdAt: order.createdAt,
-        updatedAt: order.updatedAt
-      }
+      order: maskedOrder
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -505,6 +532,16 @@ router.post('/orders/:orderId/assign-middleman', protect, authorizeRoles('admin'
 
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Block middleman assignment on disputed orders
+    if (order.status === 'disputed') {
+      return res.status(400).json({ message: 'Cannot assign middleman to a disputed order' });
+    }
+
+    // Block middleman assignment on disputed orders
+    if (order.status === 'disputed') {
+      return res.status(400).json({ message: 'Cannot assign middleman to a disputed order' });
     }
 
     if (order.status !== 'paid' && order.status !== 'pending_payment') {
@@ -627,15 +664,20 @@ router.get('/orders', protect, authorizeRoles('admin'), async (req, res) => {
     }
 
     const orders = await Order.find(query)
-      .populate('buyer', 'discordUsername')
-      .populate('seller', 'discordUsername')
-      .populate('middleman', 'discordUsername')
+      .populate('buyer', 'discordUsername discordId')
+      .populate('seller', 'discordUsername discordId')
+      .populate('middleman', 'discordUsername discordId')
       .populate('listing', 'title price')
       .sort({ createdAt: -1 });
 
+    // Admin can see all data - no masking needed, but we'll still use the function for consistency
+    const maskedOrders = orders.map(order => 
+      maskOrderData(order.toObject(), req.user.role, req.user.userId)
+    );
+
     res.json({
       success: true,
-      orders
+      orders: maskedOrders
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -672,6 +714,16 @@ router.post('/orders/:orderId/collect', protect, authorizeRoles('middleman'), as
       return res.status(403).json({ message: 'Not assigned to this order' });
     }
 
+    // Block actions on disputed orders
+    if (order.status === 'disputed') {
+      return res.status(400).json({ message: 'Cannot perform actions on a disputed order' });
+    }
+
+    // Block actions on disputed orders
+    if (order.status === 'disputed') {
+      return res.status(400).json({ message: 'Cannot perform actions on a disputed order' });
+    }
+
     if (order.status !== 'paid') {
       return res.status(400).json({ message: 'Order must be paid before collection' });
     }
@@ -702,6 +754,21 @@ router.post('/orders/:orderId/deliver', protect, authorizeRoles('middleman'), as
       return res.status(403).json({ message: 'Not assigned to this order' });
     }
 
+    // Block actions on disputed orders
+    if (order.status === 'disputed') {
+      return res.status(400).json({ message: 'Cannot perform actions on a disputed order' });
+    }
+
+    // Block actions on disputed orders
+    if (order.status === 'disputed') {
+      return res.status(400).json({ message: 'Cannot perform actions on a disputed order' });
+    }
+
+    // Block actions on disputed orders
+    if (order.status === 'disputed') {
+      return res.status(400).json({ message: 'Cannot perform actions on a disputed order' });
+    }
+
     if (order.status !== 'item_collected') {
       return res.status(400).json({ message: 'Item must be collected before delivery' });
     }
@@ -721,15 +788,20 @@ router.post('/orders/:orderId/deliver', protect, authorizeRoles('middleman'), as
 router.get('/middleman/orders', protect, authorizeRoles('middleman'), async (req, res) => {
   try {
     const orders = await Order.find({ middleman: req.user.userId })
-      .populate('buyer', 'discordUsername')
-      .populate('seller', 'discordUsername')
+      .populate('buyer', 'discordUsername discordId')
+      .populate('seller', 'discordUsername discordId')
       .populate('listing', 'title itemName')
       .sort({ createdAt: -1 })
-      .select('_id status buyer seller listing createdAt');
+      .select('_id status buyer seller listing createdAt updatedAt');
+
+    // Middleman can see buyer and seller Discord details
+    const maskedOrders = orders.map(order => 
+      maskOrderData(order.toObject(), req.user.role, req.user.userId)
+    );
 
     res.json({
       success: true,
-      orders
+      orders: maskedOrders
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -748,6 +820,11 @@ router.post('/orders/:orderId/mark-paid', protect, authorizeRoles('middleman'), 
 
     if (order.middleman?.toString() !== req.user.userId) {
       return res.status(403).json({ message: 'Not assigned to this order' });
+    }
+
+    // Block actions on disputed orders
+    if (order.status === 'disputed') {
+      return res.status(400).json({ message: 'Cannot perform actions on a disputed order' });
     }
 
     if (order.status !== 'pending_payment') {
@@ -774,6 +851,11 @@ router.post('/orders/:orderId/complete', protect, authorizeRoles('admin'), async
 
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Block completion of disputed orders (admin must resolve dispute first)
+    if (order.status === 'disputed') {
+      return res.status(400).json({ message: 'Cannot complete a disputed order. Resolve the dispute first.' });
     }
 
     if (order.status !== 'item_delivered') {
@@ -1383,7 +1465,11 @@ router.post('/listings/:listingId/remove', protect, authorizeRoles('admin'), asy
 router.post('/orders/:orderId/dispute', protect, authorizeRoles('user', 'seller'), async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { reason } = req.body;
+    const { reason, description } = req.body;
+
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ message: 'Reason is required' });
+    }
 
     const order = await Order.findById(orderId);
 
@@ -1391,46 +1477,88 @@ router.post('/orders/:orderId/dispute', protect, authorizeRoles('user', 'seller'
       return res.status(404).json({ message: 'Order not found' });
     }
 
+    // Check authorization: only buyer or seller can dispute
     if (order.buyer.toString() !== req.user.userId && order.seller.toString() !== req.user.userId) {
       return res.status(403).json({ message: 'Not authorized to dispute this order' });
     }
 
-    const existingDispute = await Dispute.findOne({ order: orderId });
+    // Check if order is completed - cannot dispute completed orders
+    if (order.status === 'completed') {
+      return res.status(400).json({ message: 'Cannot dispute a completed order' });
+    }
+
+    // Check if order is already disputed
+    if (order.status === 'disputed') {
+      return res.status(400).json({ message: 'Order is already disputed' });
+    }
+
+    // Check for existing active dispute
+    const existingDispute = await Dispute.findOne({ 
+      order: orderId, 
+      status: 'open' 
+    });
     if (existingDispute) {
-      return res.status(400).json({ message: 'Dispute already exists for this order' });
+      return res.status(400).json({ message: 'An active dispute already exists for this order' });
     }
 
     const raisedBy = req.user.userId;
     const against = order.buyer.toString() === req.user.userId ? order.seller : order.buyer;
 
+    // Create dispute
     const dispute = await Dispute.create({
       order: orderId,
       raisedBy,
       against,
-      reason
+      reason: reason.trim(),
+      description: description ? description.trim() : ''
     });
+
+    // Freeze order by setting status to "disputed"
+    order.status = 'disputed';
+    await order.save();
 
     res.json({
       success: true,
-      dispute
+      dispute,
+      message: 'Dispute raised successfully. Order has been frozen.'
     });
   } catch (error) {
+    console.error('Dispute creation error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
 router.get('/disputes', protect, authorizeRoles('admin'), async (req, res) => {
   try {
-    const disputes = await Dispute.find()
+    const { status, orderId, userId } = req.query;
+    
+    // Build query
+    const query = {};
+    if (status) {
+      query.status = status;
+    }
+    if (orderId) {
+      query.order = orderId;
+    }
+    if (userId) {
+      query.$or = [
+        { raisedBy: userId },
+        { against: userId }
+      ];
+    }
+
+    const disputes = await Dispute.find(query)
       .populate('order')
-      .populate('raisedBy', 'discordUsername')
-      .populate('against', 'discordUsername');
+      .populate('raisedBy', 'discordUsername discordId')
+      .populate('against', 'discordUsername discordId')
+      .sort({ createdAt: -1 });
 
     res.json({
       success: true,
       disputes
     });
   } catch (error) {
+    console.error('Disputes fetch error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -1438,7 +1566,7 @@ router.get('/disputes', protect, authorizeRoles('admin'), async (req, res) => {
 router.post('/disputes/:disputeId/resolve', protect, authorizeRoles('admin'), async (req, res) => {
   try {
     const { disputeId } = req.params;
-    const { resolutionNote } = req.body;
+    const { resolutionNote, restoreOrderStatus } = req.body;
 
     const dispute = await Dispute.findById(disputeId);
 
@@ -1446,15 +1574,44 @@ router.post('/disputes/:disputeId/resolve', protect, authorizeRoles('admin'), as
       return res.status(404).json({ message: 'Dispute not found' });
     }
 
+    if (dispute.status === 'resolved') {
+      return res.status(400).json({ message: 'Dispute is already resolved' });
+    }
+
+    const order = await Order.findById(dispute.order);
+
+    // Resolve dispute
     dispute.status = 'resolved';
-    dispute.resolutionNote = resolutionNote;
+    dispute.resolutionNote = resolutionNote || '';
     await dispute.save();
+
+    // Restore order to previous status if requested (admin decision)
+    // Default: restore to 'item_delivered' to allow completion
+    if (order && order.status === 'disputed') {
+      if (restoreOrderStatus) {
+        order.status = restoreOrderStatus;
+      } else {
+        // Default restoration: try to restore to a logical previous state
+        // This is a simple approach - in production, you might want to track previous status
+        order.status = 'item_delivered';
+      }
+      await order.save();
+    }
+
+    await logAdminAction({
+      adminId: req.user.userId,
+      action: 'RESOLVE_DISPUTE',
+      targetType: 'dispute',
+      targetId: disputeId,
+      note: `Resolved dispute for order ${dispute.order}`
+    });
 
     res.json({
       success: true,
-      message: 'Dispute resolved'
+      message: 'Dispute resolved and order status restored'
     });
   } catch (error) {
+    console.error('Dispute resolution error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

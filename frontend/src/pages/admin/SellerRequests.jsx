@@ -34,8 +34,8 @@ function SellerRequests() {
     fetchRequests();
   }, []);
 
-  // Set up polling (7 seconds interval)
-  usePolling(fetchRequests, 7000);
+  // Set up polling (30 seconds interval)
+  usePolling(fetchRequests, 30000);
 
   const handleApprove = async (requestId) => {
     try {

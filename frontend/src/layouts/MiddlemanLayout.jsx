@@ -1,10 +1,14 @@
+import { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useResponsive } from '../hooks/useResponsive';
 
 function MiddlemanLayout() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { isMobile, isTablet } = useResponsive();
 
   const handleLogout = () => {
     logout();
@@ -14,7 +18,7 @@ function MiddlemanLayout() {
   const navStyle = {
     backgroundColor: '#131829',
     backdropFilter: 'blur(10px)',
-    padding: '16px 32px',
+    padding: isMobile ? '12px 16px' : isTablet ? '14px 24px' : '16px 32px',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -113,35 +117,56 @@ function MiddlemanLayout() {
           }}>
             M
           </div>
-          <span style={logoTextStyle}>McFleet Middleman</span>
+          <span style={{ ...logoTextStyle, display: isMobile ? 'none' : 'inline' }}>McFleet Middleman</span>
         </Link>
         
         <div style={navLinksStyle}>
           <Link 
             to="/middleman/orders" 
-            style={isActive('/middleman/orders') ? activeLinkStyle : linkStyle}
-            onMouseEnter={(e) => !isActive('/middleman/orders') && (e.target.style.color = '#ffffff')}
-            onMouseLeave={(e) => !isActive('/middleman/orders') && (e.target.style.color = '#b8bcc8')}
+            style={{
+              ...(isActive('/middleman/orders') ? activeLinkStyle : linkStyle),
+              fontSize: isMobile ? '13px' : linkStyle.fontSize,
+              padding: isMobile ? '8px 12px' : linkStyle.padding
+            }}
+            onMouseEnter={(e) => !isActive('/middleman/orders') && !isMobile && (e.target.style.color = '#ffffff')}
+            onMouseLeave={(e) => !isActive('/middleman/orders') && !isMobile && (e.target.style.color = '#b8bcc8')}
           >
-            Assigned Orders
+            {isMobile ? 'Orders' : 'Assigned Orders'}
           </Link>
         </div>
         
-        <div style={userInfoStyle}>
-          <div style={userBadgeStyle}>
-            <span style={{ color: '#ffffff', fontWeight: '500', fontSize: '14px' }}>{user?.discordUsername || 'Middleman'}</span>
+        <div style={{
+          ...userInfoStyle,
+          flexDirection: isMobile ? 'column' : 'row',
+          gap: isMobile ? '8px' : userInfoStyle.gap
+        }}>
+          <div style={{
+            ...userBadgeStyle,
+            padding: isMobile ? '6px 10px' : userBadgeStyle.padding
+          }}>
+            <span style={{ 
+              color: '#ffffff', 
+              fontWeight: '500', 
+              fontSize: isMobile ? '12px' : '14px' 
+            }}>
+              {user?.discordUsername || 'Middleman'}
+            </span>
           </div>
           <button 
             onClick={handleLogout} 
-            style={logoutButtonStyle}
-            onMouseEnter={(e) => e.target.style.backgroundColor = '#dc2626'}
-            onMouseLeave={(e) => e.target.style.backgroundColor = '#ef4444'}
+            style={{
+              ...logoutButtonStyle,
+              padding: isMobile ? '6px 12px' : logoutButtonStyle.padding,
+              fontSize: isMobile ? '12px' : logoutButtonStyle.fontSize
+            }}
+            onMouseEnter={(e) => !isMobile && (e.target.style.backgroundColor = '#dc2626')}
+            onMouseLeave={(e) => !isMobile && (e.target.style.backgroundColor = '#ef4444')}
           >
             Logout
           </button>
         </div>
       </nav>
-      <div style={{ padding: '32px' }}>
+      <div style={{ padding: isMobile ? '16px' : isTablet ? '24px' : '32px' }}>
         <Outlet />
       </div>
     </div>

@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import apiClient from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import OrderTimeline from '../../components/OrderTimeline';
+import DisputeModal from '../../components/DisputeModal';
 
 function SellerOrderDetail() {
   const { orderId } = useParams();
@@ -10,6 +11,10 @@ function SellerOrderDetail() {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [disputeModalOpen, setDisputeModalOpen] = useState(false);
+  const [submittingDispute, setSubmittingDispute] = useState(false);
+  const [disputeError, setDisputeError] = useState(null);
+  const [disputeSuccess, setDisputeSuccess] = useState(null);
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -35,6 +40,39 @@ function SellerOrderDetail() {
     }
   }, [orderId]);
 
+  const handleRaiseDispute = () => {
+    setDisputeModalOpen(true);
+    setDisputeError(null);
+    setDisputeSuccess(null);
+  };
+
+  const handleSubmitDispute = async ({ reason, description }) => {
+    try {
+      setSubmittingDispute(true);
+      setDisputeError(null);
+      setDisputeSuccess(null);
+
+      const response = await apiClient.post(`/api/auth/orders/${orderId}/dispute`, {
+        reason,
+        description
+      });
+
+      if (response.data.success) {
+        setDisputeSuccess(response.data.message || 'Dispute raised successfully');
+        setDisputeModalOpen(false);
+        // Refresh order data to show dispute status
+        const orderResponse = await apiClient.get(`/api/auth/orders/${orderId}`);
+        if (orderResponse.data.success) {
+          setOrder(orderResponse.data.order);
+        }
+      }
+    } catch (err) {
+      setDisputeError(err.response?.data?.message || 'Failed to raise dispute');
+    } finally {
+      setSubmittingDispute(false);
+    }
+  };
+
   const getStatusLabel = (status) => {
     const statusLabels = {
       pending_payment: 'Pending Payment',
@@ -42,7 +80,8 @@ function SellerOrderDetail() {
       item_collected: 'Item Collected',
       item_delivered: 'Item Delivered',
       completed: 'Completed',
-      cancelled: 'Cancelled'
+      cancelled: 'Cancelled',
+      disputed: 'Disputed'
     };
     return statusLabels[status] || status;
   };
@@ -94,7 +133,8 @@ function SellerOrderDetail() {
       item_collected: '#8b5cf6',
       item_delivered: '#10b981',
       completed: '#059669',
-      cancelled: '#ef4245'
+      cancelled: '#ef4245',
+      disputed: '#ef4444'
     };
     return {
       display: 'inline-block',
@@ -213,6 +253,122 @@ function SellerOrderDetail() {
           All communication happens through the middleman to ensure a secure transaction.
         </p>
       </div>
+
+      {/* Dispute Status */}
+      {order.dispute && (
+        <div style={{
+          ...sectionStyle,
+          backgroundColor: order.dispute.status === 'open' ? '#1a1f35' : '#1e2338',
+          borderColor: order.dispute.status === 'open' ? '#ef4444' : '#2d3447'
+        }}>
+          <h3 style={{ marginTop: 0, marginBottom: '12px', color: '#ffffff', fontSize: '16px', fontWeight: '600' }}>
+            {order.dispute.status === 'open' ? '⚠️ Active Dispute' : '✅ Dispute Resolved'}
+          </h3>
+          <div style={{ marginBottom: '12px' }}>
+            <div style={{ color: '#b8bcc8', fontSize: '14px', marginBottom: '8px' }}>
+              <strong style={{ color: '#ffffff' }}>Reason:</strong> {order.dispute.reason}
+            </div>
+            {order.dispute.description && (
+              <div style={{ color: '#b8bcc8', fontSize: '14px', marginBottom: '8px' }}>
+                <strong style={{ color: '#ffffff' }}>Description:</strong> {order.dispute.description}
+              </div>
+            )}
+            <div style={{ color: '#6b7280', fontSize: '12px' }}>
+              Raised on: {new Date(order.dispute.createdAt).toLocaleString('en-IN')}
+            </div>
+            {order.dispute.status === 'resolved' && order.dispute.resolutionNote && (
+              <div style={{ 
+                marginTop: '12px', 
+                padding: '12px', 
+                backgroundColor: '#1e2338', 
+                borderRadius: '8px',
+                color: '#b8bcc8',
+                fontSize: '14px'
+              }}>
+                <strong style={{ color: '#10b981' }}>Resolution:</strong> {order.dispute.resolutionNote}
+              </div>
+            )}
+          </div>
+          {order.dispute.status === 'open' && (
+            <div style={{
+              padding: '12px',
+              backgroundColor: '#ef4444',
+              color: '#ffffff',
+              borderRadius: '8px',
+              fontSize: '13px',
+              fontWeight: '500'
+            }}>
+              This order is frozen. All actions are locked until an admin resolves the dispute.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Success/Error Messages */}
+      {disputeSuccess && (
+        <div style={{
+          ...sectionStyle,
+          backgroundColor: '#10b981',
+          color: '#ffffff',
+          padding: '16px',
+          marginBottom: '24px'
+        }}>
+          {disputeSuccess}
+        </div>
+      )}
+
+      {disputeError && (
+        <div style={{
+          ...sectionStyle,
+          backgroundColor: '#ef4444',
+          color: '#ffffff',
+          padding: '16px',
+          marginBottom: '24px'
+        }}>
+          {disputeError}
+        </div>
+      )}
+
+      {/* Raise Dispute Button */}
+      {order.status !== 'completed' && 
+       order.status !== 'cancelled' && 
+       order.status !== 'disputed' && 
+       !order.dispute && (
+        <div style={{ marginTop: '24px' }}>
+          <button
+            onClick={handleRaiseDispute}
+            style={{
+              padding: '12px 24px',
+              backgroundColor: '#ef4444',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = '#dc2626';
+              e.target.style.transform = 'scale(1.02)';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = '#ef4444';
+              e.target.style.transform = 'scale(1)';
+            }}
+          >
+            Raise Dispute
+          </button>
+        </div>
+      )}
+
+      {/* Dispute Modal */}
+      <DisputeModal
+        isOpen={disputeModalOpen}
+        onClose={() => setDisputeModalOpen(false)}
+        onSubmit={handleSubmitDispute}
+        isLoading={submittingDispute}
+      />
     </div>
   );
 }

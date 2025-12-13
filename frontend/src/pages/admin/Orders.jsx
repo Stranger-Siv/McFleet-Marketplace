@@ -55,8 +55,8 @@ function Orders() {
     fetchAllData();
   }, []);
 
-  // Set up polling for orders (7 seconds interval)
-  usePolling(fetchAllData, 7000);
+  // Set up polling for orders (30 seconds interval)
+  usePolling(fetchAllData, 30000);
 
   const handleAssignMiddlemanClick = (orderId) => {
     const middlemanId = selectedMiddleman[orderId];
@@ -168,6 +168,8 @@ function Orders() {
       case 'completed':
         return '#059669'; // dark green
       case 'cancelled':
+        return '#ef4444'; // red
+      case 'disputed':
         return '#ef4444'; // red
       default:
         return '#6b7280'; // gray

@@ -31,8 +31,8 @@ function Transactions() {
     fetchTransactions();
   }, []);
 
-  // Set up polling (7 seconds interval)
-  usePolling(fetchTransactions, 7000);
+  // Set up polling (30 seconds interval)
+  usePolling(fetchTransactions, 30000);
 
   const formatCurrency = (amount) => {
     return `₹${amount?.toLocaleString('en-IN') || '0'}`;

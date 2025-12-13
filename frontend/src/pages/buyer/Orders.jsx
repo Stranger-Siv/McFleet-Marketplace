@@ -33,8 +33,8 @@ function Orders() {
     fetchOrders();
   }, []);
 
-  // Set up polling (7 seconds interval)
-  usePolling(fetchOrders, 7000);
+  // Set up polling (30 seconds interval)
+  usePolling(fetchOrders, 30000);
 
   const handleViewOrder = (orderId) => {
     navigate(`/buyer/orders/${orderId}`);
@@ -131,7 +131,8 @@ function Orders() {
       item_collected: '#5865f2',
       item_delivered: '#3ba55d',
       completed: '#3ba55d',
-      cancelled: '#ed4245'
+      cancelled: '#ed4245',
+      disputed: '#ed4245'
     };
     return {
       display: 'inline-block',

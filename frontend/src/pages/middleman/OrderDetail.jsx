@@ -47,13 +47,13 @@ function OrderDetail() {
     }
   }, [orderId]);
 
-  // Set up polling (7 seconds interval) - only refresh without showing loading
+  // Set up polling (30 seconds interval) - only refresh without showing loading
   // Only poll if orderId exists
   usePolling(() => {
     if (orderId) {
       fetchOrder(false);
     }
-  }, 7000, !!orderId);
+  }, 30000, !!orderId);
 
   const getStatusLabel = (status) => {
     const statusLabels = {
@@ -62,7 +62,8 @@ function OrderDetail() {
       item_collected: 'Item Collected',
       item_delivered: 'Item Delivered',
       completed: 'Completed',
-      cancelled: 'Cancelled'
+      cancelled: 'Cancelled',
+      disputed: 'Disputed'
     };
     return statusLabels[status] || status;
   };
@@ -80,6 +81,8 @@ function OrderDetail() {
       case 'completed':
         return '#059669'; // dark green
       case 'cancelled':
+        return '#ef4444'; // red
+      case 'disputed':
         return '#ef4444'; // red
       default:
         return '#6b7280'; // gray
@@ -492,7 +495,7 @@ function OrderDetail() {
       </div>
 
       {/* Action Buttons Section */}
-      {(order.status === 'pending_payment' || order.status === 'paid' || order.status === 'item_collected') && (
+      {(order.status === 'pending_payment' || order.status === 'paid' || order.status === 'item_collected') && !order.dispute && (
         <div style={sectionStyle}>
           <div style={sectionTitleStyle}>Actions</div>
           
@@ -615,21 +618,90 @@ function OrderDetail() {
         </div>
       )}
 
-      {/* Completed/Cancelled Status Message */}
-      {(order.status === 'completed' || order.status === 'cancelled' || order.status === 'item_delivered') && (
+      {/* Dispute Status Section */}
+      {order.dispute && (
+        <div style={sectionStyle}>
+          <div style={sectionTitleStyle}>
+            {order.dispute.status === 'open' ? '⚠️ Active Dispute' : '✅ Dispute Resolved'}
+          </div>
+          <div style={{ marginBottom: '12px' }}>
+            <div style={detailRowStyle}>
+              <span style={labelStyle}>Reason:</span>
+              <span style={valueStyle}>{order.dispute.reason}</span>
+            </div>
+            {order.dispute.description && (
+              <div style={detailRowStyle}>
+                <span style={labelStyle}>Description:</span>
+                <span style={valueStyle}>{order.dispute.description}</span>
+              </div>
+            )}
+            <div style={detailRowStyle}>
+              <span style={labelStyle}>Raised By:</span>
+              <span style={valueStyle}>
+                {order.dispute.raisedBy?.discordUsername || 'Unknown'}
+              </span>
+            </div>
+            <div style={detailRowStyle}>
+              <span style={labelStyle}>Status:</span>
+              <span style={{
+                ...statusBadgeStyle,
+                backgroundColor: order.dispute.status === 'open' ? '#ef4444' : '#10b981'
+              }}>
+                {order.dispute.status === 'open' ? 'Open' : 'Resolved'}
+              </span>
+            </div>
+            <div style={detailRowStyle}>
+              <span style={labelStyle}>Raised On:</span>
+              <span style={valueStyle}>
+                {new Date(order.dispute.createdAt).toLocaleString()}
+              </span>
+            </div>
+            {order.dispute.status === 'resolved' && order.dispute.resolutionNote && (
+              <div style={{
+                marginTop: '12px',
+                padding: '12px',
+                backgroundColor: '#d1fae5',
+                border: '1px solid #86efac',
+                borderRadius: '4px',
+                color: '#166534',
+                fontSize: '14px'
+              }}>
+                <strong>Resolution:</strong> {order.dispute.resolutionNote}
+              </div>
+            )}
+          </div>
+          {order.dispute.status === 'open' && (
+            <div style={{
+              padding: '12px',
+              backgroundColor: '#fee2e2',
+              border: '1px solid #fecaca',
+              borderRadius: '4px',
+              fontSize: '14px',
+              color: '#991b1b',
+              fontWeight: '500'
+            }}>
+              ⚠️ This order is frozen. All actions are locked until an admin resolves the dispute.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Completed/Cancelled/Disputed Status Message */}
+      {(order.status === 'completed' || order.status === 'cancelled' || order.status === 'item_delivered' || order.status === 'disputed') && (
         <div style={sectionStyle}>
           <div style={{
             padding: '16px',
-            backgroundColor: order.status === 'completed' ? '#d1fae5' : order.status === 'cancelled' ? '#fee2e2' : '#eff6ff',
-            border: `1px solid ${order.status === 'completed' ? '#86efac' : order.status === 'cancelled' ? '#fecaca' : '#bfdbfe'}`,
+            backgroundColor: order.status === 'completed' ? '#d1fae5' : order.status === 'cancelled' ? '#fee2e2' : order.status === 'disputed' ? '#fee2e2' : '#eff6ff',
+            border: `1px solid ${order.status === 'completed' ? '#86efac' : order.status === 'cancelled' ? '#fecaca' : order.status === 'disputed' ? '#fecaca' : '#bfdbfe'}`,
             borderRadius: '4px',
-            color: order.status === 'completed' ? '#166534' : order.status === 'cancelled' ? '#991b1b' : '#1e40af',
+            color: order.status === 'completed' ? '#166534' : order.status === 'cancelled' ? '#991b1b' : order.status === 'disputed' ? '#991b1b' : '#1e40af',
             textAlign: 'center',
             fontSize: '16px',
             fontWeight: '500'
           }}>
             {order.status === 'completed' && 'Order completed successfully'}
             {order.status === 'cancelled' && 'Order has been cancelled'}
+            {order.status === 'disputed' && 'Order is disputed. All actions are locked.'}
             {order.status === 'item_delivered' && 'Item delivered. Waiting for admin to complete the order.'}
           </div>
         </div>
