@@ -26,17 +26,41 @@ router.get('/discord', passport.authenticate('discord', { session: false }));
 router.get('/discord/callback',
   passport.authenticate('discord', { session: false, failureRedirect: '/' }),
   (req, res) => {
-    const token = jwt.sign(
-      {
-        userId: req.user._id,
-        role: req.user.role
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-    // Remove trailing slash from FRONTEND_URL to avoid double slashes
-    const frontendUrl = (process.env.FRONTEND_URL || '').replace(/\/$/, '');
-    res.redirect(`${frontendUrl}/auth/success?token=${token}`);
+    try {
+      const token = jwt.sign(
+        {
+          userId: req.user._id,
+          role: req.user.role
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: '7d' }
+      );
+
+      // Sanitize and validate FRONTEND_URL
+      let frontendUrl = process.env.FRONTEND_URL || '';
+
+      // Remove any whitespace, newlines, and special characters that shouldn't be in URL
+      frontendUrl = frontendUrl.trim().split(/[\s|]+/)[0]; // Take first part if multiple values separated by | or space
+
+      // Remove trailing slash
+      frontendUrl = frontendUrl.replace(/\/$/, '');
+
+      // Validate URL format
+      if (!frontendUrl || (!frontendUrl.startsWith('http://') && !frontendUrl.startsWith('https://'))) {
+        console.error('Invalid FRONTEND_URL:', process.env.FRONTEND_URL);
+        // Fallback to a default or return error
+        return res.status(500).json({
+          message: 'Server configuration error: Invalid FRONTEND_URL. Please contact administrator.'
+        });
+      }
+
+      // Construct redirect URL
+      const redirectUrl = `${frontendUrl}/auth/success?token=${token}`;
+      res.redirect(redirectUrl);
+    } catch (error) {
+      console.error('Discord callback error:', error);
+      res.status(500).json({ message: 'Authentication failed. Please try again.' });
+    }
   }
 );
 
