@@ -119,3 +119,38 @@ body {
     display: none !important;
   }
 }
+
+/* Select dropdown styling - ensure proper display */
+select {
+  width: 100%;
+  display: block;
+  position: relative;
+}
+
+/* Ensure select options are properly sized */
+select option {
+  padding: 12px 16px;
+  font-size: 14px;
+  background-color: #1a1f35;
+  color: #ffffff;
+  min-height: 40px;
+}
+
+/* Prevent select from being too narrow */
+select:not([style*="width"]) {
+  min-width: 180px;
+}
+
+/* Mobile select styling */
+@media (max-width: 639px) {
+  select {
+    width: 100% !important;
+    min-width: 100% !important;
+  }
+  
+  select option {
+    padding: 14px 16px;
+    font-size: 16px;
+    min-height: 48px;
+  }
+}

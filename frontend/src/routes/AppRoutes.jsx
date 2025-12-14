@@ -13,6 +13,7 @@ import BecomeSeller from '../pages/buyer/BecomeSeller';
 import SellerDashboard from '../pages/seller/SellerDashboard';
 import CreateListing from '../pages/seller/CreateListing';
 import MyListings from '../pages/seller/MyListings';
+import SellerOrders from '../pages/seller/Orders';
 import Transactions from '../pages/seller/Transactions';
 import SellerOrderDetail from '../pages/seller/OrderDetail';
 import MiddlemanOrders from '../pages/middleman/Orders';
@@ -95,6 +96,7 @@ function AppRoutes() {
         <Route path="dashboard" element={<SellerDashboard />} />
         <Route path="create-listing" element={<CreateListing />} />
         <Route path="listings" element={<MyListings />} />
+        <Route path="orders" element={<SellerOrders />} />
         <Route path="transactions" element={<Transactions />} />
         <Route path="orders/:orderId" element={<SellerOrderDetail />} />
       </Route>

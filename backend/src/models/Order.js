@@ -21,6 +21,32 @@ const orderSchema = new mongoose.Schema({
     ref: 'User',
     default: null
   },
+  quantity: {
+    type: Number,
+    required: true,
+    min: 1,
+    default: 1
+  },
+  unitPrice: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  totalPrice: {
+    type: Number,
+    required: true,
+    min: 0
+  },
+  commissionAmount: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  sellerReceivable: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
   status: {
     type: String,
     enum: [

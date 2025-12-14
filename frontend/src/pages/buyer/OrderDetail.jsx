@@ -4,6 +4,7 @@ import apiClient from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import OrderTimeline from '../../components/OrderTimeline';
 import DisputeModal from '../../components/DisputeModal';
+import RatingStars from '../../components/RatingStars';
 
 function OrderDetail() {
   const { orderId } = useParams();
@@ -15,6 +16,11 @@ function OrderDetail() {
   const [submittingDispute, setSubmittingDispute] = useState(false);
   const [disputeError, setDisputeError] = useState(null);
   const [disputeSuccess, setDisputeSuccess] = useState(null);
+  const [ratingModalOpen, setRatingModalOpen] = useState(false);
+  const [selectedRating, setSelectedRating] = useState(0);
+  const [submittingRating, setSubmittingRating] = useState(false);
+  const [ratingError, setRatingError] = useState(null);
+  const [ratingSuccess, setRatingSuccess] = useState(null);
 
   useEffect(() => {
     const fetchOrder = async () => {
@@ -25,6 +31,10 @@ function OrderDetail() {
 
         if (response.data.success && response.data.order) {
           setOrder(response.data.order);
+          // Check if rating already exists
+          if (response.data.order.rating) {
+            setSelectedRating(response.data.order.rating.rating);
+          }
         } else {
           setError('Order not found');
         }
@@ -44,6 +54,37 @@ function OrderDetail() {
     setDisputeModalOpen(true);
     setDisputeError(null);
     setDisputeSuccess(null);
+  };
+
+  const handleSubmitRating = async () => {
+    if (selectedRating === 0) {
+      setRatingError('Please select a rating');
+      return;
+    }
+
+    try {
+      setSubmittingRating(true);
+      setRatingError(null);
+      setRatingSuccess(null);
+
+      const response = await apiClient.post(`/api/auth/orders/${orderId}/rate`, {
+        rating: selectedRating
+      });
+
+      if (response.data.success) {
+        setRatingSuccess('Rating submitted successfully!');
+        setRatingModalOpen(false);
+        // Refresh order to get updated rating
+        const orderRes = await apiClient.get(`/api/auth/orders/${orderId}`);
+        if (orderRes.data.success) {
+          setOrder(orderRes.data.order);
+        }
+      }
+    } catch (err) {
+      setRatingError(err.response?.data?.message || 'Failed to submit rating');
+    } finally {
+      setSubmittingRating(false);
+    }
   };
 
   const handleSubmitDispute = async ({ reason, description }) => {
@@ -204,11 +245,44 @@ function OrderDetail() {
             </div>
           </>
         )}
-        <div style={{ ...infoRowStyle, borderBottom: 'none' }}>
+        <div style={infoRowStyle}>
           <span style={infoLabelStyle}>Created:</span>
           <span style={infoValueStyle}>{new Date(order.createdAt).toLocaleString('en-IN')}</span>
         </div>
       </div>
+
+      {/* Order Item Details */}
+      {order.listing && (
+        <div style={sectionStyle}>
+          <h3 style={{ marginTop: 0, marginBottom: '16px', color: '#ffffff', fontSize: '18px', fontWeight: '600' }}>
+            Order Items
+          </h3>
+          <div style={infoRowStyle}>
+            <span style={infoLabelStyle}>Item:</span>
+            <span style={infoValueStyle}>{order.listing.title || order.listing.itemName || 'N/A'}</span>
+          </div>
+          {order.quantity && (
+            <div style={infoRowStyle}>
+              <span style={infoLabelStyle}>Quantity:</span>
+              <span style={infoValueStyle}>{order.quantity} unit{order.quantity > 1 ? 's' : ''}</span>
+            </div>
+          )}
+          {order.unitPrice && (
+            <div style={infoRowStyle}>
+              <span style={infoLabelStyle}>Unit Price:</span>
+              <span style={infoValueStyle}>₹{order.unitPrice.toLocaleString('en-IN')}</span>
+            </div>
+          )}
+          {order.totalPrice && (
+            <div style={{ ...infoRowStyle, borderBottom: 'none', paddingTop: '16px', borderTop: '2px solid #2d3447' }}>
+              <span style={{ ...infoLabelStyle, fontSize: '16px', fontWeight: '700', color: '#fbbf24' }}>Total Amount:</span>
+              <span style={{ ...infoValueStyle, fontSize: '18px', fontWeight: '700', color: '#fbbf24' }}>
+                ₹{order.totalPrice.toLocaleString('en-IN')}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       <div style={{
         ...sectionStyle,
@@ -307,6 +381,97 @@ function OrderDetail() {
           {disputeError}
         </div>
       )}
+
+      {/* Rate Seller Section - Only for completed orders */}
+      {order.status === 'completed' && 
+        order.buyer?._id === user?.userId && 
+        !order.dispute && (
+          <div style={{
+            ...sectionStyle,
+            backgroundColor: '#1a1f35',
+            borderColor: order.rating ? '#2d3447' : '#fbbf24'
+          }}>
+            <h3 style={{ marginTop: 0, marginBottom: '16px', color: '#ffffff', fontSize: '18px', fontWeight: '600' }}>
+              {order.rating ? '⭐ Your Rating' : 'Rate Seller'}
+            </h3>
+            {order.rating ? (
+              <div>
+                <div style={{ marginBottom: '12px' }}>
+                  <RatingStars rating={order.rating.rating} disabled={true} size="28px" />
+                </div>
+                <div style={{ color: '#6b7280', fontSize: '13px' }}>
+                  Rated on {new Date(order.rating.createdAt).toLocaleDateString('en-IN')}
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ color: '#b8bcc8', fontSize: '14px', marginBottom: '12px' }}>
+                    How would you rate this seller?
+                  </div>
+                  <RatingStars 
+                    rating={selectedRating} 
+                    onRatingChange={setSelectedRating}
+                    size="32px"
+                  />
+                </div>
+                {ratingError && (
+                  <div style={{
+                    backgroundColor: '#7f1d1d',
+                    color: '#ffffff',
+                    padding: '10px 14px',
+                    borderRadius: '6px',
+                    marginBottom: '12px',
+                    fontSize: '13px'
+                  }}>
+                    {ratingError}
+                  </div>
+                )}
+                {ratingSuccess && (
+                  <div style={{
+                    backgroundColor: '#065f46',
+                    color: '#ffffff',
+                    padding: '10px 14px',
+                    borderRadius: '6px',
+                    marginBottom: '12px',
+                    fontSize: '13px'
+                  }}>
+                    {ratingSuccess}
+                  </div>
+                )}
+                <button
+                  onClick={handleSubmitRating}
+                  disabled={submittingRating || selectedRating === 0}
+                  style={{
+                    padding: '12px 24px',
+                    backgroundColor: selectedRating === 0 ? '#2d3447' : '#fbbf24',
+                    color: selectedRating === 0 ? '#6b7280' : '#0a0e27',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: selectedRating === 0 ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (selectedRating > 0) {
+                      e.target.style.backgroundColor = '#f59e0b';
+                      e.target.style.transform = 'scale(1.02)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (selectedRating > 0) {
+                      e.target.style.backgroundColor = '#fbbf24';
+                      e.target.style.transform = 'scale(1)';
+                    }
+                  }}
+                >
+                  {submittingRating ? 'Submitting...' : 'Submit Rating'}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
       {/* Raise Dispute Button */}
       {order.status !== 'completed' &&

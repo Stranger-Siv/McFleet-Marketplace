@@ -94,6 +94,11 @@ export function maskOrderData(order, requesterRole, requesterUserId) {
     _id: order._id,
     status: order.status,
     listing: order.listing,
+    quantity: order.quantity,
+    unitPrice: order.unitPrice,
+    totalPrice: order.totalPrice,
+    commissionAmount: order.commissionAmount,
+    sellerReceivable: order.sellerReceivable,
     createdAt: order.createdAt,
     updatedAt: order.updatedAt
   };
@@ -143,6 +148,8 @@ export function maskListingData(listing, requesterRole, requesterUserId) {
     category: listing.category,
     survival: listing.survival,
     price: listing.price,
+    stock: listing.stock,
+    description: listing.description,
     status: listing.status,
     createdAt: listing.createdAt,
     updatedAt: listing.updatedAt
@@ -151,10 +158,17 @@ export function maskListingData(listing, requesterRole, requesterUserId) {
   // Mask seller data
   if (listing.seller) {
     const isOwnListing = listing.seller._id?.toString() === requesterUserId;
-    maskedListing.seller = maskUserData(listing.seller, requesterRole, {
+    const maskedSeller = maskUserData(listing.seller, requesterRole, {
       isOwnData: isOwnListing,
       isSeller: isOwnListing
     });
+    // Always include rating info (public data) - safely handle missing fields
+    if (maskedSeller) {
+      maskedSeller.totalDeals = listing.seller?.totalDeals ?? 0;
+      maskedSeller.totalRatings = listing.seller?.totalRatings ?? 0;
+      maskedSeller.averageRating = listing.seller?.averageRating ?? 0;
+      maskedListing.seller = maskedSeller;
+    }
   }
 
   return maskedListing;

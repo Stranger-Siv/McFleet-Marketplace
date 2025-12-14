@@ -19,7 +19,21 @@ const itemListingSchema = new mongoose.Schema({
   },
   price: {
     type: Number,
-    required: true
+    required: true,
+    min: 0,
+    // CRITICAL: No getters, setters, or transformations
+    // Store and return price EXACTLY as provided
+  },
+  stock: {
+    type: Number,
+    required: true,
+    min: 0,
+    default: 1
+  },
+  description: {
+    type: String,
+    default: '',
+    maxlength: 2000
   },
   seller: {
     type: mongoose.Schema.Types.ObjectId,

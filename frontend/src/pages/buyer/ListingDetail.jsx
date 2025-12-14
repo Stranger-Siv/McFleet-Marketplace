@@ -14,6 +14,7 @@ function ListingDetail() {
   const [error, setError] = useState(null);
   const [orderError, setOrderError] = useState(null);
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
+  const [quantity, setQuantity] = useState(1);
   const { isMobile, isTablet } = useResponsive();
 
   useEffect(() => {
@@ -24,7 +25,14 @@ function ListingDetail() {
         const response = await apiClient.get(`/api/auth/listings/${listingId}`);
 
         if (response.data.success && response.data.listing) {
-          setListing(response.data.listing);
+          const listingData = response.data.listing;
+          setListing(listingData);
+          // Reset quantity to 1 when listing changes, or clamp to available stock
+          if (listingData.stock && listingData.stock > 0) {
+            setQuantity(prev => Math.min(prev, listingData.stock));
+          } else {
+            setQuantity(1);
+          }
         } else {
           setError('Listing not found');
         }
@@ -47,28 +55,45 @@ function ListingDetail() {
       return;
     }
 
+    // Validate listing exists
+    if (!listing) {
+      setOrderError('Listing not found');
+      return;
+    }
+
+    // Validate and clamp quantity to available stock
+    const availableStock = listing.stock || 0;
+    const validQuantity = Math.max(1, Math.min(quantity, availableStock));
+    
+    if (validQuantity !== quantity) {
+      setQuantity(validQuantity);
+      setOrderError(`Quantity adjusted to ${validQuantity} (available stock)`);
+      return;
+    }
+
+    if (quantity < 1) {
+      setOrderError('Quantity must be at least 1');
+      return;
+    }
+
+    if (quantity > availableStock) {
+      setOrderError(`Only ${availableStock} unit${availableStock !== 1 ? 's' : ''} available`);
+      return;
+    }
+
+    if (availableStock === 0) {
+      setOrderError('Item is out of stock');
+      return;
+    }
+
     try {
       setIsCreatingOrder(true);
       setOrderError(null);
 
-      const requestBody = { listingId };
+      const requestBody = { listingId, quantity: validQuantity };
       const requestUrl = '/api/auth/orders';
-      const fullUrl = `${apiClient.defaults.baseURL}${requestUrl}`;
-
-      // Console logging for debugging
-      console.log('=== Creating Order ===');
-      console.log('Method:', 'POST');
-      console.log('Full URL:', fullUrl);
-      console.log('Request Body:', requestBody);
-      console.log('Listing ID:', listingId);
-      console.log('Token exists:', !!localStorage.getItem('token'));
 
       const response = await apiClient.post(requestUrl, requestBody);
-
-      // Log successful response
-      console.log('=== Order Created Successfully ===');
-      console.log('Response Status:', response.status);
-      console.log('Response Data:', response.data);
 
       if (response.data.success) {
         // Redirect to orders page on success
@@ -77,20 +102,26 @@ function ListingDetail() {
         setOrderError('Failed to create order');
       }
     } catch (err) {
-      // Enhanced error logging
-      console.error('=== Order Creation Error ===');
-      console.error('Error Status:', err.response?.status);
-      console.error('Error Message:', err.response?.data?.message);
-      console.error('Error Details:', err.message);
-      console.error('Full Error Response:', err.response?.data);
-      console.error('Request Config:', err.config);
-
       const errorMessage = err.response?.data?.message || 'Failed to create order';
+      console.error('Order creation error:', err);
       setOrderError(errorMessage);
     } finally {
       setIsCreatingOrder(false);
     }
   };
+
+  // Calculate total price
+  const totalPrice = listing ? (listing.price * quantity) : 0;
+  const availableStock = listing?.stock || 0;
+  const isOutOfStock = availableStock === 0;
+  const canPurchase = !isOutOfStock && quantity >= 1 && quantity <= availableStock;
+
+  // Clamp quantity to available stock whenever stock changes
+  useEffect(() => {
+    if (listing && listing.stock !== undefined && quantity > listing.stock) {
+      setQuantity(Math.max(1, listing.stock));
+    }
+  }, [listing, quantity]);
 
   const containerStyle = {
     maxWidth: '1400px',
@@ -266,7 +297,7 @@ function ListingDetail() {
   const sellerHeaderStyle = {
     display: 'flex',
     alignItems: 'center',
-    gap: '12px',
+    gap: '10px',
     marginBottom: '12px'
   };
 
@@ -277,13 +308,19 @@ function ListingDetail() {
   };
 
   const verifiedBadgeStyle = {
-    display: 'inline-block',
-    width: '18px',
-    height: '18px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '20px',
+    height: '20px',
     borderRadius: '50%',
     backgroundColor: '#10b981',
-    position: 'relative',
-    flexShrink: 0
+    flexShrink: 0,
+    lineHeight: 1,
+    fontSize: '12px',
+    color: '#ffffff',
+    fontWeight: '700',
+    verticalAlign: 'middle'
   };
 
   const ratingStyle = {
@@ -397,13 +434,24 @@ function ListingDetail() {
               <div style={detailValueStyle}>{listing.itemName}</div>
             </div>
 
-            <div style={detailBlockStyle}>
-              <div style={detailLabelStyle}>Description</div>
-              <div style={{ ...detailValueStyle, color: '#b8bcc8', lineHeight: '1.6' }}>
-                Premium quality {listing.itemName} for {listing.survival}.
-                Fast delivery guaranteed with full buyer protection.
+            {listing.description && (
+              <div style={detailBlockStyle}>
+                <div style={detailLabelStyle}>Description & Enchantments</div>
+                <div style={{ ...detailValueStyle, color: '#b8bcc8', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+                  {listing.description}
+                </div>
               </div>
-            </div>
+            )}
+
+            {!listing.description && (
+              <div style={detailBlockStyle}>
+                <div style={detailLabelStyle}>Description</div>
+                <div style={{ ...detailValueStyle, color: '#b8bcc8', lineHeight: '1.6' }}>
+                  Premium quality {listing.itemName} for {listing.survival}.
+                  Fast delivery guaranteed with full buyer protection.
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -411,6 +459,216 @@ function ListingDetail() {
         <div style={purchasePanelStyle}>
           <div style={priceStyle}>₹{listing.price.toLocaleString()}</div>
           <div style={priceSubtextStyle}>Per unit</div>
+
+          {/* Stock Display */}
+          <div style={{
+            ...infoBlockStyle,
+            marginBottom: '20px',
+            backgroundColor: isOutOfStock ? '#7f1d1d' : '#1a1f35',
+            borderColor: isOutOfStock ? '#ef4444' : '#2d3447'
+          }}>
+            <span style={infoIconStyle}>📦</span>
+            <div style={infoTextStyle}>
+              <div style={infoTitleStyle}>
+                {isOutOfStock ? 'Out of Stock' : `Stock: ${availableStock} available`}
+              </div>
+              <div style={infoDescStyle}>
+                {isOutOfStock ? 'This item is currently unavailable' : 'Units in stock'}
+              </div>
+            </div>
+          </div>
+
+          {/* Quantity Selector */}
+          {!isOutOfStock && (
+            <div style={{
+              backgroundColor: '#1a1f35',
+              border: '1px solid #2d3447',
+              borderRadius: '12px',
+              padding: '20px',
+              marginBottom: '20px'
+            }}>
+              <div style={{
+                ...detailLabelStyle,
+                marginBottom: '12px',
+                fontSize: '13px'
+              }}>Select Quantity</div>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                justifyContent: 'center',
+                height: '44px'
+              }}>
+                <button
+                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  disabled={quantity <= 1}
+                  style={{
+                    width: '44px',
+                    height: '44px',
+                    borderRadius: '10px',
+                    border: '2px solid #2d3447',
+                    backgroundColor: quantity <= 1 ? '#0f1419' : '#1e2338',
+                    color: quantity <= 1 ? '#4b5563' : '#ffffff',
+                    fontSize: '24px',
+                    fontWeight: '600',
+                    cursor: quantity <= 1 ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.2s ease',
+                    userSelect: 'none',
+                    padding: 0,
+                    margin: 0,
+                    lineHeight: '1',
+                    flexShrink: 0
+                  }}
+                  onMouseEnter={(e) => {
+                    if (quantity > 1) {
+                      e.target.style.backgroundColor = '#2d3447';
+                      e.target.style.borderColor = '#fbbf24';
+                      e.target.style.transform = 'scale(1.05)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (quantity > 1) {
+                      e.target.style.backgroundColor = '#1e2338';
+                      e.target.style.borderColor = '#2d3447';
+                      e.target.style.transform = 'scale(1)';
+                    }
+                  }}
+                >
+                  −
+                </button>
+                <input
+                  type="number"
+                  min="1"
+                  max={availableStock}
+                  value={quantity}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value) || 1;
+                    const clamped = Math.max(1, Math.min(availableStock, val));
+                    setQuantity(clamped);
+                  }}
+                  style={{
+                    width: '120px',
+                    height: '44px',
+                    padding: '0 16px',
+                    backgroundColor: '#0f1419',
+                    border: '2px solid #2d3447',
+                    borderRadius: '10px',
+                    color: '#ffffff',
+                    fontSize: '20px',
+                    fontWeight: '700',
+                    textAlign: 'center',
+                    outline: 'none',
+                    transition: 'all 0.2s ease',
+                    fontFamily: 'inherit',
+                    boxSizing: 'border-box',
+                    margin: 0,
+                    flexShrink: 0
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#fbbf24';
+                    e.target.style.boxShadow = '0 0 0 3px rgba(251, 191, 36, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#2d3447';
+                    e.target.style.boxShadow = 'none';
+                    const val = parseInt(e.target.value) || 1;
+                    const clamped = Math.max(1, Math.min(availableStock, val));
+                    setQuantity(clamped);
+                  }}
+                  onWheel={(e) => e.target.blur()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                      e.preventDefault();
+                    }
+                  }}
+                />
+                <button
+                  onClick={() => setQuantity(Math.min(availableStock, quantity + 1))}
+                  disabled={quantity >= availableStock}
+                  style={{
+                    width: '44px',
+                    height: '44px',
+                    borderRadius: '10px',
+                    border: '2px solid #2d3447',
+                    backgroundColor: quantity >= availableStock ? '#0f1419' : '#1e2338',
+                    color: quantity >= availableStock ? '#4b5563' : '#ffffff',
+                    fontSize: '24px',
+                    fontWeight: '600',
+                    cursor: quantity >= availableStock ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.2s ease',
+                    userSelect: 'none',
+                    padding: 0,
+                    margin: 0,
+                    lineHeight: '1',
+                    flexShrink: 0
+                  }}
+                  onMouseEnter={(e) => {
+                    if (quantity < availableStock) {
+                      e.target.style.backgroundColor = '#2d3447';
+                      e.target.style.borderColor = '#fbbf24';
+                      e.target.style.transform = 'scale(1.05)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (quantity < availableStock) {
+                      e.target.style.backgroundColor = '#1e2338';
+                      e.target.style.borderColor = '#2d3447';
+                      e.target.style.transform = 'scale(1)';
+                    }
+                  }}
+                >
+                  +
+                </button>
+              </div>
+              <div style={{
+                fontSize: '11px',
+                color: '#6b7280',
+                fontWeight: '500',
+                textAlign: 'center',
+                marginTop: '8px'
+              }}>
+                Max: {availableStock} available
+              </div>
+            </div>
+          )}
+
+          {/* Total Price Display */}
+          {!isOutOfStock && (
+            <div style={{
+              ...infoBlockStyle,
+              marginBottom: '20px',
+              backgroundColor: '#1a1f35',
+              border: quantity > 1 ? '2px solid #fbbf24' : '1px solid #2d3447'
+            }}>
+              <span style={infoIconStyle}>💰</span>
+              <div style={infoTextStyle}>
+                <div style={{
+                  ...infoTitleStyle,
+                  color: quantity > 1 ? '#fbbf24' : '#ffffff',
+                  fontSize: quantity > 1 ? '18px' : '16px',
+                  fontWeight: '700'
+                }}>
+                  {quantity > 1 ? `Total: ₹${totalPrice.toLocaleString()}` : `Price: ₹${totalPrice.toLocaleString()}`}
+                </div>
+                {quantity > 1 && (
+                  <div style={infoDescStyle}>
+                    {quantity} × ₹{listing.price.toLocaleString()} per unit
+                  </div>
+                )}
+                {quantity === 1 && (
+                  <div style={infoDescStyle}>
+                    Single unit price
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Info Blocks */}
           <div style={infoBlockStyle}>
@@ -442,22 +700,22 @@ function ListingDetail() {
             <>
               <button
                 onClick={handleBuyNow}
-                disabled={isCreatingOrder}
+                disabled={isCreatingOrder || !canPurchase}
                 style={{
-                  ...(isCreatingOrder ? buttonDisabledStyle : buttonPrimaryStyle),
+                  ...(isCreatingOrder || !canPurchase ? buttonDisabledStyle : buttonPrimaryStyle),
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '8px'
                 }}
                 onMouseEnter={(e) => {
-                  if (!isCreatingOrder) {
+                  if (!isCreatingOrder && canPurchase) {
                     e.target.style.backgroundColor = '#f59e0b';
                     e.target.style.transform = 'scale(1.02)';
                   }
                 }}
                 onMouseLeave={(e) => {
-                  if (!isCreatingOrder) {
+                  if (!isCreatingOrder && canPurchase) {
                     e.target.style.backgroundColor = '#fbbf24';
                     e.target.style.transform = 'scale(1)';
                   }
@@ -467,8 +725,10 @@ function ListingDetail() {
                   <>
                     <LoadingSpinner size="16px" color="#0a0e27" /> Processing...
                   </>
+                ) : isOutOfStock ? (
+                  'Out of Stock'
                 ) : (
-                  'Buy Now'
+                  `Buy Now${quantity > 1 ? ` (${quantity} units)` : ''}`
                 )}
               </button>
 
@@ -488,8 +748,30 @@ function ListingDetail() {
               <span style={sellerNameStyle}>Verified Seller</span>
               <span style={verifiedBadgeStyle}>✓</span>
             </div>
-            <div style={ratingStyle}>⭐⭐⭐⭐⭐ 100%</div>
-            <div style={reviewsStyle}>50+ successful trades</div>
+            {listing.seller?.averageRating > 0 ? (
+              <>
+                <div style={ratingStyle}>
+                  ⭐ {listing.seller.averageRating.toFixed(1)} / 5.0
+                </div>
+                <div style={reviewsStyle}>
+                  {listing.seller.totalRatings} rating{listing.seller.totalRatings !== 1 ? 's' : ''} • {listing.seller.totalDeals} deal{listing.seller.totalDeals !== 1 ? 's' : ''} completed
+                </div>
+              </>
+            ) : listing.seller?.totalDeals > 0 ? (
+              <>
+                <div style={ratingStyle}>
+                  {listing.seller.totalDeals} deal{listing.seller.totalDeals !== 1 ? 's' : ''} completed
+                </div>
+                <div style={reviewsStyle}>
+                  No ratings yet
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={ratingStyle}>New Seller</div>
+                <div style={reviewsStyle}>No completed deals yet</div>
+              </>
+            )}
             <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #2d3447', fontSize: '12px', color: '#6b7280' }}>
               Seller identity protected for privacy. Communication coordinated through assigned middleman.
             </div>

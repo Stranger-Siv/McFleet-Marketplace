@@ -162,18 +162,33 @@ function Disputes() {
   };
 
   const filterInputStyle = {
-    padding: '10px 12px',
+    padding: isMobile ? '14px 16px' : '10px 12px',
     backgroundColor: '#1a1f35',
     border: '1px solid #2d3447',
     borderRadius: '8px',
     color: '#ffffff',
-    fontSize: '14px',
-    fontFamily: 'inherit'
+    fontSize: isMobile ? '16px' : '14px', // Prevent zoom on iOS
+    fontFamily: 'inherit',
+    minHeight: isMobile ? '48px' : 'auto', // Touch-friendly size
+    boxSizing: 'border-box'
   };
 
   const filterSelectStyle = {
     ...filterInputStyle,
-    cursor: 'pointer'
+    cursor: 'pointer',
+    appearance: 'none',
+    WebkitAppearance: 'none',
+    MozAppearance: 'none',
+    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23fbbf24' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
+    backgroundRepeat: 'no-repeat',
+    backgroundPosition: 'right 12px center',
+    backgroundSize: '12px',
+    paddingRight: isMobile ? '40px' : '36px',
+    outline: 'none',
+    transition: 'all 0.2s ease',
+    width: '100%',
+    display: 'block',
+    minWidth: isMobile ? '100%' : '200px' // Ensure minimum width
   };
 
   const tableContainerStyle = {
@@ -364,6 +379,14 @@ function Disputes() {
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             style={filterSelectStyle}
+            onFocus={(e) => {
+              e.target.style.borderColor = '#fbbf24';
+              e.target.style.boxShadow = '0 0 0 3px rgba(251, 191, 36, 0.1)';
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = '#2d3447';
+              e.target.style.boxShadow = 'none';
+            }}
           >
             <option value="all">All</option>
             <option value="open">Open</option>
@@ -651,16 +674,38 @@ function Disputes() {
                 onChange={(e) => setRestoreOrderStatus(e.target.value)}
                 style={{
                   width: '100%',
-                  padding: isMobile ? '12px' : '10px 12px',
+                  padding: isMobile ? '14px 16px' : '12px 16px',
                   backgroundColor: '#1a1f35',
                   border: '1px solid #2d3447',
                   borderRadius: '8px',
                   color: '#ffffff',
-                  fontSize: isMobile ? '13px' : '14px',
+                  fontSize: isMobile ? '16px' : '14px', // Prevent zoom on iOS
                   fontFamily: 'inherit',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  minHeight: isMobile ? '48px' : 'auto', // Touch-friendly size
+                  appearance: 'none',
+                  WebkitAppearance: 'none',
+                  MozAppearance: 'none',
+                  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23fbbf24' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'right 16px center',
+                  backgroundSize: '12px',
+                  paddingRight: isMobile ? '40px' : '36px',
+                  transition: 'all 0.2s ease',
+                  boxSizing: 'border-box',
+                  outline: 'none'
                 }}
                 disabled={actionLoading.resolve}
+                onFocus={(e) => {
+                  if (!actionLoading.resolve) {
+                    e.target.style.borderColor = '#fbbf24';
+                    e.target.style.boxShadow = '0 0 0 3px rgba(251, 191, 36, 0.1)';
+                  }
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = '#2d3447';
+                  e.target.style.boxShadow = 'none';
+                }}
               >
                 <option value="pending_payment">Pending Payment</option>
                 <option value="paid">Paid</option>

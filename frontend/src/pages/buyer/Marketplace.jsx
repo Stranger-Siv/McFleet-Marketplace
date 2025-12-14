@@ -169,14 +169,27 @@ function Marketplace() {
   });
 
   const selectStyle = {
-    padding: '8px 16px',
+    padding: isMobile ? '14px 16px' : '10px 16px',
     backgroundColor: '#1a1f35',
     border: '1px solid #2d3447',
     borderRadius: '8px',
     color: '#ffffff',
-    fontSize: '13px',
+    fontSize: isMobile ? '16px' : '14px', // Prevent zoom on iOS
     cursor: 'pointer',
-    transition: 'all 0.2s ease'
+    transition: 'all 0.2s ease',
+    minHeight: isMobile ? '48px' : '40px', // Touch-friendly size
+    appearance: 'none',
+    WebkitAppearance: 'none',
+    MozAppearance: 'none',
+    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23fbbf24' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
+    backgroundRepeat: 'no-repeat',
+    backgroundPosition: 'right 12px center',
+    backgroundSize: '12px',
+    paddingRight: isMobile ? '40px' : '36px',
+    boxSizing: 'border-box',
+    outline: 'none',
+    width: '100%', // Full width by default
+    display: 'block' // Block display to ensure proper width
   };
 
   const gridStyle = {
@@ -226,19 +239,28 @@ function Marketplace() {
   const sellerInfoStyle = {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
+    gap: '6px',
     marginBottom: '12px',
     fontSize: '13px',
-    color: '#b8bcc8'
+    color: '#b8bcc8',
+    flexWrap: 'wrap'
   };
 
   const verifiedBadgeStyle = {
-    display: 'inline-block',
-    width: '14px',
-    height: '14px',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '16px',
+    height: '16px',
     borderRadius: '50%',
     backgroundColor: '#10b981',
-    position: 'relative'
+    flexShrink: 0,
+    lineHeight: 1,
+    fontSize: '10px',
+    color: '#ffffff',
+    fontWeight: '700',
+    verticalAlign: 'middle',
+    marginLeft: '4px'
   };
 
   const priceRowStyle = {
@@ -408,33 +430,94 @@ function Marketplace() {
               ))}
             </div>
 
-            <div style={{ ...filtersRowStyle, marginTop: isMobile ? '12px' : '16px' }}>
-              <span style={{ ...filterLabelStyle, width: isMobile ? '100%' : 'auto', marginBottom: isMobile ? '8px' : '0' }}>Price:</span>
-              <select
-                value={priceFilter}
-                onChange={(e) => setPriceFilter(e.target.value)}
-                style={{ ...selectStyle, width: isMobile ? '100%' : 'auto', minWidth: isMobile ? 'auto' : '150px' }}
-                onFocus={(e) => e.target.style.borderColor = '#fbbf24'}
-                onBlur={(e) => e.target.style.borderColor = '#2d3447'}
-              >
-                <option value="all">All Prices</option>
-                <option value="low">Under ₹1,000</option>
-                <option value="medium">₹1,000 - ₹5,000</option>
-                <option value="high">Above ₹5,000</option>
-              </select>
-              <span style={{ ...filterLabelStyle, marginLeft: isMobile ? '0' : '24px', width: isMobile ? '100%' : 'auto', marginTop: isMobile ? '12px' : '0', marginBottom: isMobile ? '8px' : '0' }}>Sort:</span>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                style={{ ...selectStyle, width: isMobile ? '100%' : 'auto', minWidth: isMobile ? 'auto' : '150px' }}
-                onFocus={(e) => e.target.style.borderColor = '#fbbf24'}
-                onBlur={(e) => e.target.style.borderColor = '#2d3447'}
-              >
-                <option value="recommended">Recommended</option>
-                <option value="price-low">Price: Low to High</option>
-                <option value="price-high">Price: High to Low</option>
-                <option value="newest">Newest First</option>
-              </select>
+            <div style={{ 
+              ...filtersRowStyle, 
+              marginTop: isMobile ? '12px' : '16px',
+              flexDirection: isMobile ? 'column' : 'row',
+              gap: isMobile ? '12px' : '16px',
+              alignItems: isMobile ? 'stretch' : 'center'
+            }}>
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: isMobile ? 'column' : 'row',
+                alignItems: isMobile ? 'stretch' : 'center',
+                gap: isMobile ? '8px' : '12px',
+                width: isMobile ? '100%' : 'auto',
+                flex: isMobile ? '1' : '1 1 auto',
+                minWidth: isMobile ? '100%' : '180px'
+              }}>
+                <span style={{ 
+                  ...filterLabelStyle, 
+                  width: isMobile ? '100%' : 'auto', 
+                  marginBottom: isMobile ? '6px' : '0',
+                  marginLeft: isMobile ? '0' : '0',
+                  flexShrink: 0
+                }}>Price:</span>
+                <select
+                  value={priceFilter}
+                  onChange={(e) => setPriceFilter(e.target.value)}
+                  style={{ 
+                    ...selectStyle, 
+                    width: isMobile ? '100%' : '100%', 
+                    minWidth: isMobile ? '100%' : '180px',
+                    flex: '1 1 auto'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#fbbf24';
+                    e.target.style.boxShadow = '0 0 0 3px rgba(251, 191, 36, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#2d3447';
+                    e.target.style.boxShadow = 'none';
+                  }}
+                >
+                  <option value="all">All Prices</option>
+                  <option value="low">Under ₹1,000</option>
+                  <option value="medium">₹1,000 - ₹5,000</option>
+                  <option value="high">Above ₹5,000</option>
+                </select>
+              </div>
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: isMobile ? 'column' : 'row',
+                alignItems: isMobile ? 'stretch' : 'center',
+                gap: isMobile ? '8px' : '12px',
+                width: isMobile ? '100%' : 'auto',
+                flex: isMobile ? '1' : '1 1 auto',
+                minWidth: isMobile ? '100%' : '180px'
+              }}>
+                <span style={{ 
+                  ...filterLabelStyle, 
+                  width: isMobile ? '100%' : 'auto', 
+                  marginTop: isMobile ? '0' : '0',
+                  marginBottom: isMobile ? '6px' : '0',
+                  marginLeft: isMobile ? '0' : '0',
+                  flexShrink: 0
+                }}>Sort:</span>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  style={{ 
+                    ...selectStyle, 
+                    width: isMobile ? '100%' : '100%', 
+                    minWidth: isMobile ? '100%' : '180px',
+                    flex: '1 1 auto'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderColor = '#fbbf24';
+                    e.target.style.boxShadow = '0 0 0 3px rgba(251, 191, 36, 0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderColor = '#2d3447';
+                    e.target.style.boxShadow = 'none';
+                  }}
+                >
+                  <option value="recommended">Recommended</option>
+                  <option value="price-low">Price: Low to High</option>
+                  <option value="price-high">Price: High to Low</option>
+                  <option value="newest">Newest First</option>
+                </select>
+              </div>
             </div>
           </>
         )}
@@ -490,9 +573,49 @@ function Marketplace() {
                 <div style={sellerInfoStyle}>
                   <span>Seller: Hidden</span>
                   <span style={verifiedBadgeStyle}>✓</span>
+                  {listing.seller?.averageRating > 0 && (
+                    <span style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      marginLeft: '8px',
+                      color: '#fbbf24',
+                      fontWeight: '600',
+                      fontSize: '12px'
+                    }}>
+                      ⭐ {listing.seller.averageRating.toFixed(1)}
+                      {listing.seller.totalRatings > 0 && (
+                        <span style={{ color: '#6b7280', fontWeight: '400' }}>
+                          ({listing.seller.totalRatings})
+                        </span>
+                      )}
+                    </span>
+                  )}
+                  {(!listing.seller?.averageRating || listing.seller.averageRating === 0) && listing.seller?.totalDeals === 0 && (
+                    <span style={{
+                      marginLeft: '8px',
+                      color: '#6b7280',
+                      fontSize: '12px',
+                      fontStyle: 'italic'
+                    }}>
+                      New Seller
+                    </span>
+                  )}
                 </div>
                 <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '12px' }}>
                   {listing.category} • {listing.survival}
+                </div>
+                <div style={{ 
+                  fontSize: '12px', 
+                  color: listing.stock > 0 ? '#10b981' : '#ef4444',
+                  fontWeight: '600',
+                  marginBottom: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <span>📦</span>
+                  <span>{listing.stock > 0 ? `${listing.stock} in stock` : 'Out of stock'}</span>
                 </div>
                 <div style={priceRowStyle}>
                   <div>
@@ -508,17 +631,26 @@ function Marketplace() {
                     e.stopPropagation();
                     handleViewListing(listing._id);
                   }}
-                  style={buttonStyle}
+                  disabled={listing.stock === 0}
+                  style={{
+                    ...buttonStyle,
+                    opacity: listing.stock === 0 ? 0.5 : 1,
+                    cursor: listing.stock === 0 ? 'not-allowed' : 'pointer'
+                  }}
                   onMouseEnter={(e) => {
-                    e.target.style.backgroundColor = '#f59e0b';
-                    e.target.style.transform = 'scale(1.02)';
+                    if (listing.stock > 0) {
+                      e.target.style.backgroundColor = '#f59e0b';
+                      e.target.style.transform = 'scale(1.02)';
+                    }
                   }}
                   onMouseLeave={(e) => {
-                    e.target.style.backgroundColor = '#fbbf24';
-                    e.target.style.transform = 'scale(1)';
+                    if (listing.stock > 0) {
+                      e.target.style.backgroundColor = '#fbbf24';
+                      e.target.style.transform = 'scale(1)';
+                    }
                   }}
                 >
-                  View Details
+                  {listing.stock === 0 ? 'Out of Stock' : 'View Details'}
                 </button>
               </div>
             </div>

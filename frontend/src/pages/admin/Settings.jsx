@@ -514,6 +514,12 @@ function Settings() {
                       e.target.style.boxShadow = 'none';
                     }
                   }}
+                  onWheel={(e) => e.target.blur()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                      e.preventDefault();
+                    }
+                  }}
                 />
                 <div style={helpTextStyle}>
                   Valid range: 5% to 40%. This percentage will be applied to all new orders.

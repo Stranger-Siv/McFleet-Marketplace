@@ -7,6 +7,9 @@ function MyListings() {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [editingStock, setEditingStock] = useState(null);
+  const [stockValue, setStockValue] = useState('');
+  const [stockError, setStockError] = useState(null);
 
   const fetchListings = async () => {
     try {
@@ -66,6 +69,37 @@ function MyListings() {
 
   const formatCurrency = (amount) => {
     return `₹${amount?.toLocaleString('en-IN') || '0'}`;
+  };
+
+  const handleUpdateStock = async (listingId, newStock) => {
+    try {
+      setStockError(null);
+      const response = await apiClient.put(`/api/auth/listings/${listingId}/stock`, {
+        stock: newStock
+      });
+
+      if (response.data.success) {
+        setEditingStock(null);
+        setStockValue('');
+        fetchListings(); // Refresh listings
+      } else {
+        setStockError('Failed to update stock');
+      }
+    } catch (err) {
+      setStockError(err.response?.data?.message || 'Failed to update stock');
+    }
+  };
+
+  const startEditingStock = (listing) => {
+    setEditingStock(listing._id);
+    setStockValue(listing.stock || 1);
+    setStockError(null);
+  };
+
+  const cancelEditingStock = () => {
+    setEditingStock(null);
+    setStockValue('');
+    setStockError(null);
   };
 
   const containerStyle = {
@@ -232,8 +266,100 @@ function MyListings() {
               <div style={listingInfoStyle}>
                 <div style={listingTitleStyle}>{listing.title}</div>
                 <div style={detailStyle}>
-                  <strong>Price:</strong> {formatCurrency(listing.price)}
+                  <strong>Price:</strong> {formatCurrency(listing.price)} per unit
                 </div>
+                <div style={detailStyle}>
+                  <strong>Stock:</strong> {
+                    editingStock === listing._id ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+                        <input
+                          type="number"
+                          min="1"
+                          value={stockValue}
+                          onChange={(e) => setStockValue(e.target.value)}
+                          style={{
+                            width: '80px',
+                            padding: '6px 10px',
+                            backgroundColor: '#1a1f35',
+                            border: '1px solid #2d3447',
+                            borderRadius: '6px',
+                            color: '#ffffff',
+                            fontSize: '14px'
+                          }}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter') {
+                              handleUpdateStock(listing._id, parseInt(stockValue));
+                            }
+                          }}
+                          onWheel={(e) => e.target.blur()}
+                          onKeyDown={(e) => {
+                            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                              e.preventDefault();
+                            }
+                          }}
+                        />
+                        <button
+                          onClick={() => handleUpdateStock(listing._id, parseInt(stockValue))}
+                          style={{
+                            padding: '6px 12px',
+                            backgroundColor: '#10b981',
+                            color: '#ffffff',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={cancelEditingStock}
+                          style={{
+                            padding: '6px 12px',
+                            backgroundColor: '#6b7280',
+                            color: '#ffffff',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <span style={{ color: listing.stock > 0 ? '#10b981' : '#ef4444', fontWeight: '600' }}>
+                        {listing.stock || 0} units
+                      </span>
+                    )
+                  }
+                  {editingStock !== listing._id && (
+                    <button
+                      onClick={() => startEditingStock(listing)}
+                      style={{
+                        marginLeft: '12px',
+                        padding: '4px 10px',
+                        backgroundColor: 'transparent',
+                        color: '#fbbf24',
+                        border: '1px solid #fbbf24',
+                        borderRadius: '4px',
+                        fontSize: '11px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        textTransform: 'uppercase'
+                      }}
+                    >
+                      Update
+                    </button>
+                  )}
+                </div>
+                {stockError && editingStock === listing._id && (
+                  <div style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px' }}>
+                    {stockError}
+                  </div>
+                )}
                 <div style={detailStyle}>
                   <strong>Created:</strong> {new Date(listing.createdAt).toLocaleDateString()}
                 </div>

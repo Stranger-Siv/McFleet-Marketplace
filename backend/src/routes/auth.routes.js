@@ -1,6 +1,7 @@
 import express from 'express';
 import passport from 'passport';
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 import { protect, authorizeRoles } from '../middlewares/auth.middleware.js';
 import SellerRequest from '../models/SellerRequest.js';
 import User from '../models/User.js';
@@ -10,9 +11,11 @@ import Order from '../models/Order.js';
 import Transaction from '../models/Transaction.js';
 import Settings from '../models/Settings.js';
 import Dispute from '../models/Dispute.js';
+import Rating from '../models/Rating.js';
 import AuditLog from '../models/AuditLog.js';
 import Category from '../models/Category.js';
 import Survival from '../models/Survival.js';
+// import User from '../models/User.js';
 import { logAdminAction } from '../utils/auditLogger.js';
 import { maskOrderData, maskListingData, maskUserData } from '../utils/dataMasking.js';
 
@@ -31,7 +34,9 @@ router.get('/discord/callback',
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
-    res.redirect(`${process.env.FRONTEND_URL}/auth/success?token=${token}`);
+    // Remove trailing slash from FRONTEND_URL to avoid double slashes
+    const frontendUrl = (process.env.FRONTEND_URL || '').replace(/\/$/, '');
+    res.redirect(`${frontendUrl}/auth/success?token=${token}`);
   }
 );
 
@@ -39,17 +44,17 @@ router.get('/me', protect, async (req, res) => {
   try {
     // Check if user has a seller request (get most recent one)
     // First check for pending, then get most recent of any status
-    let sellerRequest = await SellerRequest.findOne({ 
-      user: req.user.userId, 
-      status: 'pending' 
+    let sellerRequest = await SellerRequest.findOne({
+      user: req.user.userId,
+      status: 'pending'
     });
-    
+
     // If no pending request, get the most recent request of any status
     if (!sellerRequest) {
       sellerRequest = await SellerRequest.findOne({ user: req.user.userId })
         .sort({ updatedAt: -1 });
     }
-    
+
     const userData = {
       ...req.user,
       sellerRequest: sellerRequest ? {
@@ -98,6 +103,20 @@ router.get('/seller/transactions', protect, authorizeRoles('seller'), async (req
   }
 });
 
+router.get('/seller/commission', protect, authorizeRoles('seller'), async (req, res) => {
+  try {
+    const settings = await Settings.findOne();
+    const commissionPercent = settings?.commissionPercent || 20;
+
+    res.json({
+      success: true,
+      commissionPercent
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 router.get('/seller/earnings', protect, authorizeRoles('seller'), async (req, res) => {
   try {
     const transactions = await Transaction.find({ seller: req.user.userId });
@@ -129,7 +148,7 @@ router.get('/seller/listings', protect, authorizeRoles('seller'), async (req, re
   try {
     // Sellers can see all their listings including disabled ones
     const listings = await ItemListing.find({ seller: req.user.userId })
-      .select('_id title price status createdAt')
+      .select('_id title price stock description status createdAt')
       .sort({ createdAt: -1 });
 
     res.json({
@@ -141,12 +160,37 @@ router.get('/seller/listings', protect, authorizeRoles('seller'), async (req, re
   }
 });
 
+router.get('/seller/orders', protect, authorizeRoles('seller'), async (req, res) => {
+  try {
+    // Fetch orders where the logged-in user is the seller
+    const orders = await Order.find({ seller: req.user.userId })
+      .populate('listing', 'title itemName category stock')
+      .populate('buyer', 'discordUsername discordId')
+      .populate('middleman', 'discordUsername discordId')
+      .sort({ createdAt: -1 })
+      .select('_id status listing buyer middleman quantity unitPrice totalPrice commissionAmount sellerReceivable createdAt updatedAt');
+
+    // Mask sensitive data for seller role (buyer Discord details hidden)
+    const maskedOrders = orders.map(order =>
+      maskOrderData(order.toObject(), req.user.role, req.user.userId)
+    );
+
+    res.json({
+      success: true,
+      orders: maskedOrders
+    });
+  } catch (error) {
+    console.error('Seller orders fetch error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 router.post('/seller-request', protect, async (req, res) => {
   try {
     // Check for pending request
-    const pendingRequest = await SellerRequest.findOne({ 
-      user: req.user.userId, 
-      status: 'pending' 
+    const pendingRequest = await SellerRequest.findOne({
+      user: req.user.userId,
+      status: 'pending'
     });
 
     if (pendingRequest) {
@@ -154,9 +198,9 @@ router.post('/seller-request', protect, async (req, res) => {
     }
 
     // Check for rejected request within last 24 hours
-    const rejectedRequest = await SellerRequest.findOne({ 
-      user: req.user.userId, 
-      status: 'rejected' 
+    const rejectedRequest = await SellerRequest.findOne({
+      user: req.user.userId,
+      status: 'rejected'
     }).sort({ updatedAt: -1 }); // Get most recent rejected request
 
     if (rejectedRequest) {
@@ -166,7 +210,7 @@ router.post('/seller-request', protect, async (req, res) => {
 
       if (hoursSinceRejection < 24) {
         const hoursRemaining = Math.ceil(24 - hoursSinceRejection);
-        return res.status(400).json({ 
+        return res.status(400).json({
           message: `You can resubmit a seller request after 24 hours. Please wait ${hoursRemaining} more hour(s).`,
           hoursRemaining: hoursRemaining,
           canResubmitAt: new Date(rejectionTime.getTime() + 24 * 60 * 60 * 1000)
@@ -306,7 +350,7 @@ router.get('/listings', async (req, res) => {
       query.itemName = itemName;
     }
 
-    const listings = await ItemListing.find(query).populate('seller', 'discordUsername discordId');
+    const listings = await ItemListing.find(query).populate('seller', 'discordUsername discordId totalDeals totalRatings averageRating');
 
     // Mask seller Discord details for public/buyer access (no authenticated user)
     // Public access = buyer role masking (no Discord details)
@@ -314,8 +358,11 @@ router.get('/listings', async (req, res) => {
       const listingObj = listing.toObject();
       if (listingObj.seller) {
         listingObj.seller = {
-          _id: listingObj.seller._id
-          // No Discord details for public access
+          _id: listingObj.seller._id,
+          // Include rating info (public data)
+          totalDeals: listingObj.seller.totalDeals || 0,
+          totalRatings: listingObj.seller.totalRatings || 0,
+          averageRating: listingObj.seller.averageRating || 0
         };
       }
       return listingObj;
@@ -334,7 +381,7 @@ router.get('/listings/:listingId', protect, async (req, res) => {
   try {
     const { listingId } = req.params;
 
-    const listing = await ItemListing.findById(listingId).populate('seller', 'discordUsername discordId');
+    const listing = await ItemListing.findById(listingId).populate('seller', 'discordUsername discordId totalDeals totalRatings averageRating');
 
     if (!listing) {
       return res.status(404).json({ message: 'Listing not found' });
@@ -359,16 +406,23 @@ router.get('/listings/:listingId', protect, async (req, res) => {
 
 router.post('/listings', protect, authorizeRoles('seller'), async (req, res) => {
   try {
-    const { title, itemName, category, survival, price } = req.body;
+    const { title, itemName, category, survival, price, stock, description } = req.body;
 
     // Validate required fields
     if (!title || !itemName || !category || !survival || !price) {
       return res.status(400).json({ message: 'All fields are required' });
     }
 
-    // Validate price is positive
-    if (price <= 0) {
-      return res.status(400).json({ message: 'Price must be greater than 0' });
+    // Validate and ensure price is a number
+    const priceValue = typeof price === 'string' ? parseFloat(price) : Number(price);
+    if (isNaN(priceValue) || priceValue <= 0) {
+      return res.status(400).json({ message: 'Price must be a positive number' });
+    }
+
+    // Validate stock
+    const stockValue = stock !== undefined ? parseInt(stock) : 1;
+    if (!Number.isInteger(stockValue) || stockValue < 1) {
+      return res.status(400).json({ message: 'Stock must be a positive integer (minimum 1)' });
     }
 
     // Validate category exists and is active
@@ -388,7 +442,9 @@ router.post('/listings', protect, authorizeRoles('seller'), async (req, res) => 
       itemName,
       category,
       survival,
-      price,
+      price: priceValue,
+      stock: stockValue,
+      description: description ? description.trim() : '',
       seller: req.user.userId,
       status: 'active'
     });
@@ -398,13 +454,25 @@ router.post('/listings', protect, authorizeRoles('seller'), async (req, res) => 
       listing
     });
   } catch (error) {
+    console.error('Listing creation error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-router.post('/orders', protect, authorizeRoles('user', 'seller'), async (req, res) => {
+router.put('/listings/:listingId/stock', protect, authorizeRoles('seller'), async (req, res) => {
   try {
-    const { listingId } = req.body;
+    const { listingId } = req.params;
+    const { stock } = req.body;
+
+    // Validate stock
+    if (stock === undefined || stock === null) {
+      return res.status(400).json({ message: 'Stock value is required' });
+    }
+
+    const newStock = parseInt(stock);
+    if (!Number.isInteger(newStock) || newStock < 0) {
+      return res.status(400).json({ message: 'Stock must be a non-negative integer (minimum 0)' });
+    }
 
     const listing = await ItemListing.findById(listingId);
 
@@ -412,49 +480,167 @@ router.post('/orders', protect, authorizeRoles('user', 'seller'), async (req, re
       return res.status(404).json({ message: 'Listing not found' });
     }
 
-    // Block orders for non-active listings (including disabled_by_admin)
-    if (listing.status !== 'active') {
-      return res.status(400).json({ 
-        message: listing.status === 'disabled_by_admin' 
-          ? 'This listing has been removed by admin' 
-          : 'Listing not available' 
+    // Verify seller owns this listing
+    if (listing.seller.toString() !== req.user.userId) {
+      return res.status(403).json({ message: 'You can only update your own listings' });
+    }
+
+    // Calculate how many units have been sold (reserved in orders)
+    const reservedOrders = await Order.find({
+      listing: listingId,
+      status: { $nin: ['completed', 'cancelled'] }
+    });
+
+    const reservedQuantity = reservedOrders.reduce((sum, order) => sum + (order.quantity || 0), 0);
+
+    // Prevent reducing stock below already reserved quantity
+    if (newStock < reservedQuantity) {
+      return res.status(400).json({
+        message: `Cannot reduce stock below ${reservedQuantity} (already reserved in active orders)`
       });
     }
 
-    if (listing.seller.toString() === req.user.userId) {
-      return res.status(400).json({ message: 'Cannot order your own listing' });
+    const oldStock = listing.stock;
+    listing.stock = newStock;
+
+    // Reactivate listing if it was sold and new stock is added
+    if (listing.status === 'sold' && newStock > 0) {
+      listing.status = 'active';
     }
 
-    const order = await Order.create({
-      buyer: req.user.userId,
-      seller: listing.seller,
-      listing: listing._id,
-      status: 'pending_payment'
-    });
+    // Mark as sold if stock reaches zero
+    if (newStock === 0) {
+      listing.status = 'sold';
+    }
 
-    listing.status = 'sold';
     await listing.save();
 
     res.json({
       success: true,
-      order
+      listing,
+      message: `Stock updated from ${oldStock} to ${newStock}`
     });
   } catch (error) {
+    console.error('Stock update error:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/orders', protect, authorizeRoles('user', 'seller'), async (req, res) => {
+  try {
+    const { listingId, quantity } = req.body;
+
+    // Validate quantity
+    const orderQuantity = quantity !== undefined ? parseInt(quantity) : 1;
+    if (!Number.isInteger(orderQuantity) || orderQuantity < 1) {
+      return res.status(400).json({ message: 'Quantity must be a positive integer (minimum 1)' });
+    }
+
+    // Use transaction to ensure atomic stock reservation
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // Lock the listing document for update (atomic operation)
+      const listing = await ItemListing.findById(listingId).session(session);
+
+      if (!listing) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(404).json({ message: 'Listing not found' });
+      }
+
+      // Block orders for non-active listings (including disabled_by_admin)
+      if (listing.status !== 'active') {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(400).json({
+          message: listing.status === 'disabled_by_admin'
+            ? 'This listing has been removed by admin'
+            : 'Listing not available'
+        });
+      }
+
+      if (listing.seller.toString() === req.user.userId) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(400).json({ message: 'Cannot order your own listing' });
+      }
+
+      // Check stock availability
+      if (!listing.stock || listing.stock < orderQuantity) {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(400).json({
+          message: `Insufficient stock. Available: ${listing.stock || 0}, Requested: ${orderQuantity}`
+        });
+      }
+
+      // Calculate prices
+      const unitPrice = listing.price;
+      const totalPrice = unitPrice * orderQuantity;
+
+      // Reserve stock (reduce available stock)
+      listing.stock = listing.stock - orderQuantity;
+
+      // Update listing status if stock reaches zero
+      if (listing.stock === 0) {
+        listing.status = 'sold';
+      }
+
+      await listing.save({ session });
+
+      // Create order with quantity and pricing
+      const order = new Order({
+        buyer: req.user.userId,
+        seller: listing.seller,
+        listing: listing._id,
+        quantity: orderQuantity,
+        unitPrice: unitPrice,
+        totalPrice: totalPrice,
+        status: 'pending_payment'
+      });
+
+      await order.save({ session });
+
+      await session.commitTransaction();
+      session.endSession();
+
+      res.json({
+        success: true,
+        order
+      });
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
+      console.error('Transaction error:', error);
+      // Re-throw with more context
+      error.statusCode = error.statusCode || 500;
+      throw error;
+    }
+  } catch (error) {
+    console.error('Order creation error:', error);
+    // Provide more detailed error message
+    const errorMessage = error.message || 'Server error';
+    const statusCode = error.statusCode || 500;
+    res.status(statusCode).json({
+      message: errorMessage,
+      error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
 router.get('/buyer/orders', protect, authorizeRoles('user'), async (req, res) => {
   try {
     const orders = await Order.find({ buyer: req.user.userId })
-      .populate('listing', 'title price')
-      .populate('seller', 'discordUsername discordId')
+      .populate('listing', 'title price stock')
+      .populate('seller', 'discordUsername discordId totalDeals totalRatings averageRating')
       .populate('middleman', 'discordUsername discordId')
       .sort({ createdAt: -1 })
-      .select('_id status listing seller middleman createdAt updatedAt');
+      .select('_id status listing seller middleman quantity unitPrice totalPrice commissionAmount sellerReceivable createdAt updatedAt');
 
     // Mask sensitive data for buyer role
-    const maskedOrders = orders.map(order => 
+    const maskedOrders = orders.map(order =>
       maskOrderData(order.toObject(), req.user.role, req.user.userId)
     );
 
@@ -463,6 +649,7 @@ router.get('/buyer/orders', protect, authorizeRoles('user'), async (req, res) =>
       orders: maskedOrders
     });
   } catch (error) {
+    console.error('Buyer orders fetch error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -473,7 +660,7 @@ router.get('/orders/:orderId', protect, async (req, res) => {
 
     const order = await Order.findById(orderId)
       .populate('buyer', 'discordUsername discordId')
-      .populate('seller', 'discordUsername discordId')
+      .populate('seller', 'discordUsername discordId totalDeals totalRatings averageRating')
       .populate('middleman', 'discordUsername discordId')
       .populate('listing');
 
@@ -482,23 +669,34 @@ router.get('/orders/:orderId', protect, async (req, res) => {
     }
 
     // Access control: Allow only buyer, seller, assigned middleman, or admin
-    const isBuyer = order.buyer._id.toString() === req.user.userId;
-    const isSeller = order.seller._id.toString() === req.user.userId;
-    const isMiddleman = order.middleman && order.middleman._id.toString() === req.user.userId;
+    const isBuyer = order.buyer?._id?.toString() === req.user.userId;
+    const isSeller = order.seller?._id?.toString() === req.user.userId;
+    const isMiddleman = order.middleman && order.middleman._id?.toString() === req.user.userId;
     const isAdmin = req.user.role === 'admin';
 
     if (!isBuyer && !isSeller && !isMiddleman && !isAdmin) {
       return res.status(403).json({ message: 'Forbidden' });
     }
 
+    // Check for rating
+    const rating = await Rating.findOne({ order: orderId });
+
     // Check for active dispute
-    const dispute = await Dispute.findOne({ 
-      order: orderId, 
-      status: 'open' 
+    const dispute = await Dispute.findOne({
+      order: orderId,
+      status: 'open'
     }).populate('raisedBy', 'discordUsername');
 
     // Mask sensitive data based on requester role
     const maskedOrder = maskOrderData(order.toObject(), req.user.role, req.user.userId);
+
+    // Include rating if exists
+    if (rating) {
+      maskedOrder.rating = {
+        rating: rating.rating,
+        createdAt: rating.createdAt
+      };
+    }
 
     // Add dispute info if exists (masked based on role)
     if (dispute) {
@@ -519,6 +717,7 @@ router.get('/orders/:orderId', protect, async (req, res) => {
       order: maskedOrder
     });
   } catch (error) {
+    console.error('Order detail fetch error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -655,7 +854,7 @@ router.get('/orders', protect, authorizeRoles('admin'), async (req, res) => {
   try {
     const { status } = req.query;
     const query = {};
-    
+
     // Filter by status if provided, otherwise get all non-completed orders
     if (status) {
       query.status = status;
@@ -671,7 +870,7 @@ router.get('/orders', protect, authorizeRoles('admin'), async (req, res) => {
       .sort({ createdAt: -1 });
 
     // Admin can see all data - no masking needed, but we'll still use the function for consistency
-    const maskedOrders = orders.map(order => 
+    const maskedOrders = orders.map(order =>
       maskOrderData(order.toObject(), req.user.role, req.user.userId)
     );
 
@@ -792,10 +991,10 @@ router.get('/middleman/orders', protect, authorizeRoles('middleman'), async (req
       .populate('seller', 'discordUsername discordId')
       .populate('listing', 'title itemName')
       .sort({ createdAt: -1 })
-      .select('_id status buyer seller listing createdAt updatedAt');
+      .select('_id status buyer seller listing quantity unitPrice totalPrice commissionAmount sellerReceivable createdAt updatedAt');
 
     // Middleman can see buyer and seller Discord details
-    const maskedOrders = orders.map(order => 
+    const maskedOrders = orders.map(order =>
       maskOrderData(order.toObject(), req.user.role, req.user.userId)
     );
 
@@ -865,24 +1064,36 @@ router.post('/orders/:orderId/complete', protect, authorizeRoles('admin'), async
     const settings = await Settings.findOne();
     const commissionPercent = settings?.commissionPercent || 20;
 
-    const itemPrice = order.listing.price;
-    const commissionAmount = (itemPrice * commissionPercent) / 100;
-    const sellerPayout = itemPrice - commissionAmount;
+    // Use order's totalPrice (already calculated with quantity)
+    const totalPrice = order.totalPrice || (order.unitPrice * order.quantity);
+    const commissionAmount = (totalPrice * commissionPercent) / 100;
+    const sellerPayout = totalPrice - commissionAmount;
+
+    // Update order with calculated values
+    order.commissionAmount = commissionAmount;
+    order.sellerReceivable = sellerPayout;
+    order.status = 'completed';
+    await order.save();
+
+    // Increment seller's totalDeals
+    await User.findByIdAndUpdate(order.seller, {
+      $inc: { totalDeals: 1 }
+    });
 
     const transaction = await Transaction.create({
       order: order._id,
       buyer: order.buyer,
       seller: order.seller,
       middleman: order.middleman,
-      itemPrice,
+      itemPrice: totalPrice, // Store total order price
       commissionPercent,
       commissionAmount,
       sellerPayout,
       paymentMethod: 'UPI'
     });
 
-    order.status = 'completed';
-    await order.save();
+    // Note: Stock was already reserved/reduced when order was created
+    // On completion, stock is permanently consumed (no restoration needed)
 
     await logAdminAction({
       adminId: req.user.userId,
@@ -947,7 +1158,7 @@ router.get('/transactions/summary', protect, authorizeRoles('admin'), async (req
 router.get('/settings', protect, authorizeRoles('admin'), async (req, res) => {
   try {
     let settings = await Settings.findOne();
-    
+
     // If no settings exist, return default
     if (!settings) {
       return res.json({
@@ -969,6 +1180,116 @@ router.get('/settings', protect, authorizeRoles('admin'), async (req, res) => {
   }
 });
 
+// ==================== RATING APIs ====================
+router.post('/orders/:orderId/rate', protect, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { rating } = req.body;
+
+    // Validate rating
+    if (!rating || typeof rating !== 'number') {
+      return res.status(400).json({ message: 'Rating is required and must be a number' });
+    }
+
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      return res.status(400).json({ message: 'Rating must be an integer between 1 and 5' });
+    }
+
+    // Find order
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Verify buyer is the requester
+    if (order.buyer.toString() !== req.user.userId) {
+      return res.status(403).json({ message: 'Only the buyer can rate this order' });
+    }
+
+    // Check order is completed
+    if (order.status !== 'completed') {
+      return res.status(400).json({ message: 'Can only rate completed orders' });
+    }
+
+    // Check if rating already exists
+    const existingRating = await Rating.findOne({ order: orderId });
+    if (existingRating) {
+      return res.status(400).json({ message: 'This order has already been rated' });
+    }
+
+    // Create rating
+    const newRating = await Rating.create({
+      order: orderId,
+      seller: order.seller,
+      buyer: req.user.userId,
+      rating: rating
+    });
+
+    // Update seller metrics
+    const seller = await User.findById(order.seller);
+    if (seller) {
+      const newTotalRatings = (seller.totalRatings || 0) + 1;
+      const newRatingSum = (seller.ratingSum || 0) + rating;
+      const newAverageRating = Math.round((newRatingSum / newTotalRatings) * 10) / 10; // Round to 1 decimal
+
+      await User.findByIdAndUpdate(order.seller, {
+        totalRatings: newTotalRatings,
+        ratingSum: newRatingSum,
+        averageRating: newAverageRating
+      });
+    }
+
+    res.json({
+      success: true,
+      rating: newRating
+    });
+  } catch (error) {
+    console.error('Rating creation error:', error);
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'This order has already been rated' });
+    }
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/sellers/:sellerId/rating', async (req, res) => {
+  try {
+    const { sellerId } = req.params;
+    const seller = await User.findById(sellerId).select('totalDeals totalRatings averageRating');
+
+    if (!seller) {
+      return res.status(404).json({ message: 'Seller not found' });
+    }
+
+    res.json({
+      success: true,
+      rating: {
+        averageRating: seller.averageRating || 0,
+        totalRatings: seller.totalRatings || 0,
+        totalDeals: seller.totalDeals || 0
+      }
+    });
+  } catch (error) {
+    console.error('Get seller rating error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/orders/:orderId/rating', protect, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const rating = await Rating.findOne({ order: orderId });
+
+    res.json({
+      success: true,
+      rating: rating || null
+    });
+  } catch (error) {
+    console.error('Get order rating error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 router.put('/settings/commission', protect, authorizeRoles('admin'), async (req, res) => {
   try {
     const { commissionPercent } = req.body;
@@ -982,9 +1303,9 @@ router.put('/settings/commission', protect, authorizeRoles('admin'), async (req,
     }
 
     let settings = await Settings.findOne();
-    
+
     const oldCommission = settings?.commissionPercent;
-    
+
     if (settings) {
       settings.commissionPercent = commissionPercent;
       await settings.save();
@@ -997,7 +1318,7 @@ router.put('/settings/commission', protect, authorizeRoles('admin'), async (req,
       action: 'UPDATE_COMMISSION',
       targetType: 'settings',
       targetId: settings._id,
-      note: oldCommission 
+      note: oldCommission
         ? `Updated commission from ${oldCommission}% to ${commissionPercent}%`
         : `Set commission to ${commissionPercent}%`
     });
@@ -1018,7 +1339,7 @@ router.get('/settings/categories', async (req, res) => {
     const categories = await Category.find({ active: true })
       .select('name')
       .sort({ name: 1 });
-    
+
     res.json({
       success: true,
       categories: categories.map(cat => cat.name)
@@ -1034,7 +1355,7 @@ router.get('/settings/categories/all', protect, authorizeRoles('admin'), async (
     const categories = await Category.find()
       .populate('createdBy', 'discordUsername')
       .sort({ createdAt: -1 });
-    
+
     res.json({
       success: true,
       categories
@@ -1158,7 +1479,7 @@ router.get('/settings/survivals', async (req, res) => {
     const survivals = await Survival.find({ active: true })
       .select('name')
       .sort({ name: 1 });
-    
+
     res.json({
       success: true,
       survivals: survivals.map(sur => sur.name)
@@ -1174,7 +1495,7 @@ router.get('/settings/survivals/all', protect, authorizeRoles('admin'), async (r
     const survivals = await Survival.find()
       .populate('createdBy', 'discordUsername')
       .sort({ createdAt: -1 });
-    
+
     res.json({
       success: true,
       survivals
@@ -1493,9 +1814,9 @@ router.post('/orders/:orderId/dispute', protect, authorizeRoles('user', 'seller'
     }
 
     // Check for existing active dispute
-    const existingDispute = await Dispute.findOne({ 
-      order: orderId, 
-      status: 'open' 
+    const existingDispute = await Dispute.findOne({
+      order: orderId,
+      status: 'open'
     });
     if (existingDispute) {
       return res.status(400).json({ message: 'An active dispute already exists for this order' });
@@ -1531,7 +1852,7 @@ router.post('/orders/:orderId/dispute', protect, authorizeRoles('user', 'seller'
 router.get('/disputes', protect, authorizeRoles('admin'), async (req, res) => {
   try {
     const { status, orderId, userId } = req.query;
-    
+
     // Build query
     const query = {};
     if (status) {
@@ -1563,10 +1884,29 @@ router.get('/disputes', protect, authorizeRoles('admin'), async (req, res) => {
   }
 });
 
+// Helper function to restore stock for an order
+async function restoreOrderStock(order) {
+  if (!order || !order.listing || !order.quantity) {
+    return;
+  }
+
+  const listing = await ItemListing.findById(order.listing);
+  if (listing) {
+    listing.stock = (listing.stock || 0) + order.quantity;
+
+    // Reactivate listing if it was marked as sold
+    if (listing.status === 'sold' && listing.stock > 0) {
+      listing.status = 'active';
+    }
+
+    await listing.save();
+  }
+}
+
 router.post('/disputes/:disputeId/resolve', protect, authorizeRoles('admin'), async (req, res) => {
   try {
     const { disputeId } = req.params;
-    const { resolutionNote, restoreOrderStatus } = req.body;
+    const { resolutionNote, restoreOrderStatus, restoreStock } = req.body;
 
     const dispute = await Dispute.findById(disputeId);
 
@@ -1578,7 +1918,7 @@ router.post('/disputes/:disputeId/resolve', protect, authorizeRoles('admin'), as
       return res.status(400).json({ message: 'Dispute is already resolved' });
     }
 
-    const order = await Order.findById(dispute.order);
+    const order = await Order.findById(dispute.order).populate('listing');
 
     // Resolve dispute
     dispute.status = 'resolved';
@@ -1595,6 +1935,12 @@ router.post('/disputes/:disputeId/resolve', protect, authorizeRoles('admin'), as
         // This is a simple approach - in production, you might want to track previous status
         order.status = 'item_delivered';
       }
+
+      // Restore stock if order is cancelled or if admin explicitly requests it
+      if (restoreOrderStatus === 'cancelled' || restoreStock === true) {
+        await restoreOrderStock(order);
+      }
+
       await order.save();
     }
 

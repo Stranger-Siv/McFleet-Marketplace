@@ -221,6 +221,20 @@ function SellerLayout() {
             My Listings
           </Link>
           <Link 
+            to="/seller/orders" 
+            style={{
+              ...(isActive('/seller/orders') ? activeLinkStyle : linkStyle),
+              width: isMobile ? '100%' : 'auto',
+              textAlign: isMobile ? 'left' : 'center',
+              padding: isMobile ? '12px 16px' : linkStyle.padding
+            }}
+            onClick={() => setMobileMenuOpen(false)}
+            onMouseEnter={(e) => !isActive('/seller/orders') && !isMobile && (e.target.style.color = '#ffffff')}
+            onMouseLeave={(e) => !isActive('/seller/orders') && !isMobile && (e.target.style.color = '#b8bcc8')}
+          >
+            Orders
+          </Link>
+          <Link 
             to="/seller/transactions" 
             style={{
               ...(isActive('/seller/transactions') ? activeLinkStyle : linkStyle),

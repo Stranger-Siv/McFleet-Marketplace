@@ -399,11 +399,27 @@ function OrderDetail() {
                 <span style={valueStyle}>{order.listing.survival}</span>
               </div>
             )}
-            {order.listing.price && (
+            {order.quantity && (
               <div style={detailRowStyle}>
-                <span style={labelStyle}>Price:</span>
+                <span style={labelStyle}>Quantity:</span>
+                <span style={valueStyle}>
+                  {order.quantity} unit{order.quantity > 1 ? 's' : ''}
+                </span>
+              </div>
+            )}
+            {order.unitPrice && (
+              <div style={detailRowStyle}>
+                <span style={labelStyle}>Unit Price:</span>
                 <span style={{ ...valueStyle, color: '#10b981', fontSize: '16px' }}>
-                  {formatCurrency(order.listing.price)}
+                  {formatCurrency(order.unitPrice)}
+                </span>
+              </div>
+            )}
+            {order.totalPrice && (
+              <div style={detailRowStyle}>
+                <span style={labelStyle}>Total Price:</span>
+                <span style={{ ...valueStyle, color: '#fbbf24', fontSize: '18px', fontWeight: '700' }}>
+                  {formatCurrency(order.totalPrice)}
                 </span>
               </div>
             )}

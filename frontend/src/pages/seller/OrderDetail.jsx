@@ -9,6 +9,7 @@ function SellerOrderDetail() {
   const { orderId } = useParams();
   const { user } = useAuth();
   const [order, setOrder] = useState(null);
+  const [commissionPercent, setCommissionPercent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [disputeModalOpen, setDisputeModalOpen] = useState(false);
@@ -17,16 +18,23 @@ function SellerOrderDetail() {
   const [disputeSuccess, setDisputeSuccess] = useState(null);
 
   useEffect(() => {
-    const fetchOrder = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
         setError(null);
-        const response = await apiClient.get(`/api/auth/orders/${orderId}`);
+        const [orderRes, commissionRes] = await Promise.all([
+          apiClient.get(`/api/auth/orders/${orderId}`),
+          apiClient.get('/api/auth/seller/commission')
+        ]);
 
-        if (response.data.success && response.data.order) {
-          setOrder(response.data.order);
+        if (orderRes.data.success && orderRes.data.order) {
+          setOrder(orderRes.data.order);
         } else {
           setError('Order not found');
+        }
+
+        if (commissionRes.data.success) {
+          setCommissionPercent(commissionRes.data.commissionPercent);
         }
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to fetch order');
@@ -36,7 +44,7 @@ function SellerOrderDetail() {
     };
 
     if (orderId) {
-      fetchOrder();
+      fetchData();
     }
   }, [orderId]);
 
@@ -110,20 +118,27 @@ function SellerOrderDetail() {
   const infoRowStyle = {
     display: 'flex',
     justifyContent: 'space-between',
-    padding: '12px 0',
-    borderBottom: '1px solid #2d3447'
+    alignItems: 'center',
+    padding: '14px 0',
+    borderBottom: '1px solid #2d3447',
+    minHeight: '44px',
+    boxSizing: 'border-box'
   };
 
   const infoLabelStyle = {
     color: '#b8bcc8',
     fontSize: '14px',
-    fontWeight: '500'
+    fontWeight: '500',
+    minWidth: '140px',
+    flexShrink: 0
   };
 
   const infoValueStyle = {
     color: '#ffffff',
     fontSize: '14px',
-    fontWeight: '600'
+    fontWeight: '600',
+    textAlign: 'right',
+    flex: 1
   };
 
   const statusBadgeStyle = (status) => {
@@ -226,11 +241,27 @@ function SellerOrderDetail() {
             <span style={infoValueStyle}>{order.listing.title || order.listing.itemName || 'N/A'}</span>
           </div>
         )}
-        {order.listing && (
+        {order.quantity && (
           <div style={infoRowStyle}>
-            <span style={infoLabelStyle}>Price:</span>
+            <span style={infoLabelStyle}>Quantity:</span>
+            <span style={infoValueStyle}>
+              {order.quantity} unit{order.quantity > 1 ? 's' : ''}
+            </span>
+          </div>
+        )}
+        {order.unitPrice && (
+          <div style={infoRowStyle}>
+            <span style={infoLabelStyle}>Unit Price:</span>
             <span style={{ ...infoValueStyle, color: '#fbbf24' }}>
-              ₹{order.listing.price?.toLocaleString('en-IN') || '0'}
+              ₹{order.unitPrice.toLocaleString('en-IN')}
+            </span>
+          </div>
+        )}
+        {order.totalPrice && (
+          <div style={infoRowStyle}>
+            <span style={infoLabelStyle}>Total Price:</span>
+            <span style={{ ...infoValueStyle, color: '#fbbf24', fontSize: '18px', fontWeight: '700' }}>
+              ₹{order.totalPrice.toLocaleString('en-IN')}
             </span>
           </div>
         )}
@@ -239,6 +270,65 @@ function SellerOrderDetail() {
           <span style={infoValueStyle}>{new Date(order.createdAt).toLocaleString('en-IN')}</span>
         </div>
       </div>
+
+      {/* Commission Breakdown - Show for all orders */}
+      {order.totalPrice && commissionPercent !== null && order.status !== 'cancelled' && (
+        <div style={{
+          ...sectionStyle,
+          backgroundColor: '#1a1f35',
+          borderColor: order.status === 'completed' ? '#fbbf24' : '#2d3447'
+        }}>
+          <h3 style={{ marginTop: 0, marginBottom: '16px', color: '#ffffff', fontSize: '18px', fontWeight: '600' }}>
+            💰 {order.status === 'completed' ? 'Payment Breakdown' : 'Expected Payment Breakdown'}
+          </h3>
+          <div style={infoRowStyle}>
+            <span style={infoLabelStyle}>Gross Total:</span>
+            <span style={{ ...infoValueStyle, color: '#fbbf24', fontSize: '16px', fontWeight: '600' }}>
+              ₹{order.totalPrice.toLocaleString('en-IN')}
+            </span>
+          </div>
+          {order.unitPrice && order.quantity && (
+            <div style={{ 
+              ...infoRowStyle, 
+              paddingLeft: '20px', 
+              fontSize: '13px', 
+              color: '#6b7280',
+              paddingTop: '4px',
+              paddingBottom: '4px',
+              minHeight: 'auto'
+            }}>
+              <span style={{ ...infoLabelStyle, minWidth: 'auto', color: '#6b7280' }}></span>
+              <span style={{ ...infoValueStyle, textAlign: 'left', color: '#6b7280', fontWeight: '400' }}>
+                ({order.quantity} × ₹{order.unitPrice.toLocaleString('en-IN')} per unit)
+              </span>
+            </div>
+          )}
+          <div style={infoRowStyle}>
+            <span style={infoLabelStyle}>Platform Fee ({commissionPercent}%):</span>
+            <span style={{ ...infoValueStyle, color: '#ef4444', fontSize: '16px', fontWeight: '600' }}>
+              -₹{order.status === 'completed' && order.commissionAmount !== undefined 
+                ? order.commissionAmount.toLocaleString('en-IN')
+                : ((order.totalPrice * commissionPercent) / 100).toLocaleString('en-IN')}
+            </span>
+          </div>
+          <div style={{
+            ...infoRowStyle,
+            borderTop: '2px solid #2d3447',
+            paddingTop: '16px',
+            marginTop: '8px',
+            borderBottom: 'none'
+          }}>
+            <span style={{ ...infoLabelStyle, fontSize: '14px', fontWeight: '700' }}>
+              {order.status === 'completed' ? 'Your Payout:' : 'You Will Receive:'}
+            </span>
+            <span style={{ ...infoValueStyle, color: '#10b981', fontSize: '20px', fontWeight: '700' }}>
+              ₹{order.status === 'completed' && order.sellerReceivable !== undefined
+                ? order.sellerReceivable.toLocaleString('en-IN')
+                : (order.totalPrice - (order.totalPrice * commissionPercent) / 100).toLocaleString('en-IN')}
+            </span>
+          </div>
+        </div>
+      )}
 
       <div style={{
         ...sectionStyle,

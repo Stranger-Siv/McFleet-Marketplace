@@ -239,11 +239,43 @@ function AdminOrderDetail() {
             <span style={infoValueStyle}>{order.listing.title || order.listing.itemName || 'N/A'}</span>
           </div>
         )}
-        {order.listing && (
+        {order.quantity && (
           <div style={infoRowStyle}>
-            <span style={infoLabelStyle}>Price:</span>
+            <span style={infoLabelStyle}>Quantity:</span>
+            <span style={infoValueStyle}>
+              {order.quantity} unit{order.quantity > 1 ? 's' : ''}
+            </span>
+          </div>
+        )}
+        {order.unitPrice && (
+          <div style={infoRowStyle}>
+            <span style={infoLabelStyle}>Unit Price:</span>
             <span style={{ ...infoValueStyle, color: '#fbbf24' }}>
-              ₹{order.listing.price?.toLocaleString('en-IN') || '0'}
+              ₹{order.unitPrice.toLocaleString('en-IN')}
+            </span>
+          </div>
+        )}
+        {order.totalPrice && (
+          <div style={infoRowStyle}>
+            <span style={infoLabelStyle}>Total Price:</span>
+            <span style={{ ...infoValueStyle, color: '#fbbf24', fontSize: '18px', fontWeight: '700' }}>
+              ₹{order.totalPrice.toLocaleString('en-IN')}
+            </span>
+          </div>
+        )}
+        {order.commissionAmount && (
+          <div style={infoRowStyle}>
+            <span style={infoLabelStyle}>Commission:</span>
+            <span style={{ ...infoValueStyle, color: '#10b981' }}>
+              ₹{order.commissionAmount.toLocaleString('en-IN')}
+            </span>
+          </div>
+        )}
+        {order.sellerReceivable && (
+          <div style={infoRowStyle}>
+            <span style={infoLabelStyle}>Seller Receivable:</span>
+            <span style={{ ...infoValueStyle, color: '#10b981', fontSize: '16px', fontWeight: '600' }}>
+              ₹{order.sellerReceivable.toLocaleString('en-IN')}
             </span>
           </div>
         )}

@@ -16,6 +16,9 @@ function Orders() {
   const [selectedMiddleman, setSelectedMiddleman] = useState({});
   const [showAssignModal, setShowAssignModal] = useState(null);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, action: null, orderId: null, orderInfo: null });
+  const [selectedOrders, setSelectedOrders] = useState(new Set());
+  const [bulkMiddleman, setBulkMiddleman] = useState('');
+  const [bulkAssigning, setBulkAssigning] = useState(false);
 
   const fetchOrders = async () => {
     try {
@@ -106,6 +109,70 @@ function Orders() {
       setActionError(err.response?.data?.message || 'Failed to assign middleman');
     } finally {
       setActionLoading(prev => ({ ...prev, [orderId]: false }));
+    }
+  };
+
+  const handleSelectOrder = (orderId) => {
+    setSelectedOrders(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(orderId)) {
+        newSet.delete(orderId);
+      } else {
+        newSet.add(orderId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleSelectAll = () => {
+    const assignableOrders = orders.filter(o => canAssignMiddleman(o));
+    if (selectedOrders.size === assignableOrders.length && assignableOrders.length > 0) {
+      setSelectedOrders(new Set());
+    } else {
+      setSelectedOrders(new Set(assignableOrders.map(o => o._id)));
+    }
+  };
+
+  const handleBulkAssign = async () => {
+    if (!bulkMiddleman) {
+      setActionError('Please select a middleman');
+      return;
+    }
+
+    if (selectedOrders.size === 0) {
+      setActionError('Please select at least one order');
+      return;
+    }
+
+    try {
+      setBulkAssigning(true);
+      setActionError(null);
+      setActionMessage(null);
+
+      const orderIds = Array.from(selectedOrders);
+      const results = await Promise.allSettled(
+        orderIds.map(orderId =>
+          apiClient.post(`/api/auth/orders/${orderId}/assign-middleman`, {
+            middlemanId: bulkMiddleman
+          })
+        )
+      );
+
+      const successful = results.filter(r => r.status === 'fulfilled' && r.value.data.success).length;
+      const failed = results.length - successful;
+
+      if (successful > 0) {
+        setActionMessage(`Successfully assigned ${successful} order${successful > 1 ? 's' : ''}${failed > 0 ? ` (${failed} failed)` : ''}`);
+        setSelectedOrders(new Set());
+        setBulkMiddleman('');
+        await fetchAllData();
+      } else {
+        setActionError('Failed to assign orders. Please try again.');
+      }
+    } catch (err) {
+      setActionError(err.response?.data?.message || 'Failed to assign orders');
+    } finally {
+      setBulkAssigning(false);
     }
   };
 
@@ -210,7 +277,22 @@ function Orders() {
   }
 
   const containerStyle = {
+    maxWidth: '1400px',
+    margin: '0 auto',
     padding: '20px'
+  };
+
+  const titleStyle = {
+    color: '#ffffff',
+    fontSize: '28px',
+    fontWeight: '700',
+    marginBottom: '8px'
+  };
+
+  const subtitleStyle = {
+    color: '#b8bcc8',
+    marginBottom: '20px',
+    fontSize: '14px'
   };
 
   const tableContainerStyle = {
@@ -221,26 +303,27 @@ function Orders() {
   const tableStyle = {
     width: '100%',
     borderCollapse: 'collapse',
-    backgroundColor: '#fff',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    borderRadius: '8px',
-    overflow: 'hidden'
+    backgroundColor: '#1e2338',
+    border: '1px solid #2d3447',
+    borderRadius: '12px',
+    overflow: 'hidden',
+    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4)'
   };
 
   const thStyle = {
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#1a1f35',
     padding: '12px 16px',
     textAlign: 'left',
     fontWeight: '600',
-    color: '#374151',
-    borderBottom: '2px solid #e5e7eb',
+    color: '#ffffff',
+    borderBottom: '2px solid #2d3447',
     fontSize: '14px'
   };
 
   const tdStyle = {
     padding: '12px 16px',
-    borderBottom: '1px solid #e5e7eb',
-    color: '#374151',
+    borderBottom: '1px solid #2d3447',
+    color: '#b8bcc8',
     fontSize: '14px'
   };
 
@@ -255,25 +338,26 @@ function Orders() {
   });
 
   const buttonStyle = {
-    padding: '6px 12px',
+    padding: '8px 14px',
     border: 'none',
-    borderRadius: '4px',
-    fontSize: '12px',
+    borderRadius: '6px',
+    fontSize: '13px',
     cursor: 'pointer',
-    fontWeight: '500',
-    marginRight: '6px'
+    fontWeight: '600',
+    marginRight: '6px',
+    transition: 'all 0.2s ease'
   };
 
   const assignButtonStyle = {
     ...buttonStyle,
     backgroundColor: '#8b5cf6',
-    color: 'white'
+    color: '#ffffff'
   };
 
   const completeButtonStyle = {
     ...buttonStyle,
     backgroundColor: '#10b981',
-    color: 'white'
+    color: '#ffffff'
   };
 
   const disabledButtonStyle = {
@@ -282,23 +366,24 @@ function Orders() {
   };
 
   const messageStyle = {
-    padding: '12px',
-    borderRadius: '4px',
-    marginBottom: '16px'
+    padding: '12px 16px',
+    borderRadius: '8px',
+    marginBottom: '16px',
+    fontSize: '14px'
   };
 
   const successMessageStyle = {
     ...messageStyle,
-    backgroundColor: '#d1fae5',
-    border: '1px solid #86efac',
-    color: '#166534'
+    backgroundColor: '#065f46',
+    border: '1px solid #10b981',
+    color: '#ffffff'
   };
 
   const errorMessageStyle = {
     ...messageStyle,
-    backgroundColor: '#fee2e2',
-    border: '1px solid #fecaca',
-    color: '#991b1b'
+    backgroundColor: '#7f1d1d',
+    border: '1px solid #ef4444',
+    color: '#ffffff'
   };
 
   const modalOverlayStyle = {
@@ -315,37 +400,56 @@ function Orders() {
   };
 
   const modalStyle = {
-    backgroundColor: '#fff',
-    borderRadius: '8px',
+    backgroundColor: '#1e2338',
+    border: '1px solid #2d3447',
+    borderRadius: '12px',
     padding: '24px',
     maxWidth: '400px',
     width: '90%',
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)'
   };
 
   const selectStyle = {
     width: '100%',
-    padding: '8px',
-    border: '1px solid #ddd',
-    borderRadius: '4px',
-    fontSize: '14px',
-    marginBottom: '16px'
+    padding: '14px 16px',
+    border: '1px solid #2d3447',
+    borderRadius: '8px',
+    fontSize: '16px', // Prevent zoom on iOS
+    minHeight: '48px', // Touch-friendly size
+    marginBottom: '16px',
+    backgroundColor: '#1a1f35',
+    color: '#ffffff',
+    appearance: 'none',
+    WebkitAppearance: 'none',
+    MozAppearance: 'none',
+    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23fbbf24' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
+    backgroundRepeat: 'no-repeat',
+    backgroundPosition: 'right 16px center',
+    backgroundSize: '12px',
+    paddingRight: '40px',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    boxSizing: 'border-box',
+    outline: 'none',
+    display: 'block',
+    minWidth: '200px' // Ensure minimum width
   };
 
   const emptyStateStyle = {
     textAlign: 'center',
     padding: '60px 20px',
-    color: '#666',
-    backgroundColor: '#fff',
-    borderRadius: '8px',
+    color: '#b8bcc8',
+    backgroundColor: '#1e2338',
+    border: '1px solid #2d3447',
+    borderRadius: '12px',
     marginTop: '20px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4)'
   };
 
   return (
     <div style={containerStyle}>
-      <h1>Order Management</h1>
-      <p style={{ color: '#666', marginBottom: '20px', fontSize: '14px' }}>
+      <h1 style={titleStyle}>Order Management</h1>
+      <p style={subtitleStyle}>
         As an admin, you have full visibility of all order details including Discord identities for coordination purposes.
       </p>
 
@@ -362,9 +466,116 @@ function Orders() {
         </div>
       )}
 
+      {/* Bulk Action Bar */}
+      {selectedOrders.size > 0 && (
+        <div style={{
+          backgroundColor: '#1e2338',
+          border: '1px solid #2d3447',
+          borderRadius: '12px',
+          padding: '16px 20px',
+          marginBottom: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px',
+          flexWrap: 'wrap'
+        }}>
+          <div style={{
+            color: '#ffffff',
+            fontWeight: '600',
+            fontSize: '14px'
+          }}>
+            {selectedOrders.size} order{selectedOrders.size > 1 ? 's' : ''} selected
+          </div>
+          <select
+            value={bulkMiddleman}
+            onChange={(e) => setBulkMiddleman(e.target.value)}
+            style={{
+              ...selectStyle,
+              minWidth: '200px',
+              marginBottom: '0',
+              flex: '1',
+              maxWidth: '300px'
+            }}
+            onFocus={(e) => {
+              e.target.style.borderColor = '#fbbf24';
+              e.target.style.boxShadow = '0 0 0 3px rgba(251, 191, 36, 0.1)';
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = '#2d3447';
+              e.target.style.boxShadow = 'none';
+            }}
+          >
+            <option value="">Select middleman</option>
+            {middlemen.map((middleman) => (
+              <option key={middleman._id} value={middleman._id}>
+                {middleman.discordUsername}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={handleBulkAssign}
+            disabled={!bulkMiddleman || bulkAssigning}
+            style={{
+              backgroundColor: bulkMiddleman && !bulkAssigning ? '#fbbf24' : '#2d3447',
+              color: bulkMiddleman && !bulkAssigning ? '#0a0e27' : '#6b7280',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '10px 20px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: bulkMiddleman && !bulkAssigning ? 'pointer' : 'not-allowed',
+              transition: 'all 0.2s ease',
+              flexShrink: 0
+            }}
+            onMouseEnter={(e) => {
+              if (bulkMiddleman && !bulkAssigning) {
+                e.target.style.backgroundColor = '#f59e0b';
+                e.target.style.transform = 'scale(1.02)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (bulkMiddleman && !bulkAssigning) {
+                e.target.style.backgroundColor = '#fbbf24';
+                e.target.style.transform = 'scale(1)';
+              }
+            }}
+          >
+            {bulkAssigning ? 'Assigning...' : `Assign to ${selectedOrders.size} Order${selectedOrders.size > 1 ? 's' : ''}`}
+          </button>
+          <button
+            onClick={() => {
+              setSelectedOrders(new Set());
+              setBulkMiddleman('');
+            }}
+            style={{
+              backgroundColor: 'transparent',
+              color: '#b8bcc8',
+              border: '1px solid #2d3447',
+              borderRadius: '8px',
+              padding: '10px 16px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              flexShrink: 0
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.borderColor = '#ef4444';
+              e.target.style.color = '#ef4444';
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.borderColor = '#2d3447';
+              e.target.style.color = '#b8bcc8';
+            }}
+          >
+            Clear Selection
+          </button>
+        </div>
+      )}
+
       {orders.length === 0 ? (
         <div style={emptyStateStyle}>
-          <div style={{ fontSize: '24px', marginBottom: '12px', color: '#333' }}>
+          <div style={{ fontSize: '24px', marginBottom: '12px', color: '#ffffff' }}>
             No active orders found
           </div>
         </div>
@@ -373,6 +584,19 @@ function Orders() {
           <table style={tableStyle}>
             <thead>
               <tr>
+                <th style={{ ...thStyle, width: '40px', textAlign: 'center' }}>
+                  <input
+                    type="checkbox"
+                    checked={orders.filter(o => canAssignMiddleman(o)).length > 0 && 
+                             selectedOrders.size === orders.filter(o => canAssignMiddleman(o)).length}
+                    onChange={handleSelectAll}
+                    style={{
+                      width: '18px',
+                      height: '18px',
+                      cursor: 'pointer'
+                    }}
+                  />
+                </th>
                 <th style={thStyle}>Order ID</th>
                 <th style={thStyle}>Buyer</th>
                 <th style={thStyle}>Seller</th>
@@ -385,9 +609,28 @@ function Orders() {
               {orders.map((order) => {
                 const isLoading = actionLoading[order._id];
                 const showModal = showAssignModal === order._id;
+                const isSelected = selectedOrders.has(order._id);
+                const canSelect = canAssignMiddleman(order);
 
                 return (
-                  <tr key={order._id}>
+                  <tr key={order._id} style={{
+                    backgroundColor: isSelected ? '#252b42' : 'transparent'
+                  }}>
+                    <td style={{ ...tdStyle, textAlign: 'center', width: '40px' }}>
+                      {canSelect && (
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleSelectOrder(order._id)}
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
+                            width: '18px',
+                            height: '18px',
+                            cursor: 'pointer'
+                          }}
+                        />
+                      )}
+                    </td>
                     <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: '12px' }}>
                       <span
                         onClick={() => navigate(`/admin/orders/${order._id}`)}
@@ -427,7 +670,15 @@ function Orders() {
                           style={{
                             ...buttonStyle,
                             backgroundColor: '#3b82f6',
-                            color: 'white'
+                            color: '#ffffff'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.target.style.backgroundColor = '#2563eb';
+                            e.target.style.transform = 'scale(1.05)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.backgroundColor = '#3b82f6';
+                            e.target.style.transform = 'scale(1)';
                           }}
                         >
                           View
@@ -470,7 +721,7 @@ function Orders() {
       {showAssignModal && (
         <div style={modalOverlayStyle} onClick={() => setShowAssignModal(null)}>
           <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0, marginBottom: '16px' }}>Assign Middleman</h3>
+            <h3 style={{ marginTop: 0, marginBottom: '16px', color: '#ffffff', fontSize: '18px', fontWeight: '600' }}>Assign Middleman</h3>
             <select
               value={selectedMiddleman[showAssignModal] || ''}
               onChange={(e) => setSelectedMiddleman(prev => ({
@@ -478,6 +729,14 @@ function Orders() {
                 [showAssignModal]: e.target.value
               }))}
               style={selectStyle}
+              onFocus={(e) => {
+                e.target.style.borderColor = '#fbbf24';
+                e.target.style.boxShadow = '0 0 0 3px rgba(251, 191, 36, 0.1)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = '#2d3447';
+                e.target.style.boxShadow = 'none';
+              }}
             >
               <option value="">Select a middleman</option>
               {middlemen.map((middleman) => (

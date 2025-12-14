@@ -11,7 +11,9 @@ function CreateListing() {
     itemName: '',
     category: '',
     survival: '',
-    price: ''
+    price: '',
+    stock: '1',
+    description: ''
   });
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState(null);
@@ -95,6 +97,10 @@ function CreateListing() {
       newErrors.price = 'Price must be greater than 0';
     }
 
+    if (!formData.stock || parseInt(formData.stock) < 1) {
+      newErrors.stock = 'Stock must be at least 1';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -110,19 +116,24 @@ function CreateListing() {
     try {
       setIsSubmitting(true);
       
+      const priceValue = parseFloat(formData.price);
+      if (isNaN(priceValue) || priceValue <= 0) {
+        setSubmitError('Price must be a valid positive number');
+        setIsSubmitting(false);
+        return;
+      }
+
       const requestBody = {
         title: formData.title.trim(),
         itemName: formData.itemName.trim(),
         category: formData.category,
         survival: formData.survival,
-        price: Number(formData.price)
+        price: priceValue,
+        stock: parseInt(formData.stock) || 1,
+        description: formData.description.trim()
       };
 
-      console.log('Creating listing:', requestBody);
-
       const response = await apiClient.post('/api/auth/listings', requestBody);
-
-      console.log('Listing created successfully:', response.data);
 
       if (response.data.success) {
         // Redirect to seller dashboard on success
@@ -216,6 +227,24 @@ function CreateListing() {
     backgroundColor: '#1a1f35',
     color: '#ffffff',
     transition: 'all 0.2s ease'
+  };
+
+  const selectStyle = {
+    ...inputStyle,
+    fontSize: '16px', // Prevent zoom on iOS
+    minHeight: '48px', // Touch-friendly size
+    appearance: 'none',
+    WebkitAppearance: 'none',
+    MozAppearance: 'none',
+    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23fbbf24' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
+    backgroundRepeat: 'no-repeat',
+    backgroundPosition: 'right 16px center',
+    backgroundSize: '12px',
+    paddingRight: '40px',
+    cursor: 'pointer',
+    outline: 'none',
+    width: '100%', // Full width
+    display: 'block' // Block display
   };
 
   const inputFocusStyle = {
@@ -350,10 +379,20 @@ function CreateListing() {
                 onChange={handleChange}
                 disabled={categories.length === 0}
                 style={{
-                  ...inputStyle,
+                  ...selectStyle,
                   borderColor: errors.category ? '#ef4444' : '#2d3447',
                   opacity: categories.length === 0 ? 0.6 : 1,
                   cursor: categories.length === 0 ? 'not-allowed' : 'pointer'
+                }}
+                onFocus={(e) => {
+                  if (categories.length > 0) {
+                    e.target.style.borderColor = '#fbbf24';
+                    e.target.style.boxShadow = '0 0 0 3px rgba(251, 191, 36, 0.1)';
+                  }
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = errors.category ? '#ef4444' : '#2d3447';
+                  e.target.style.boxShadow = 'none';
                 }}
               >
                 <option value="">
@@ -391,10 +430,20 @@ function CreateListing() {
                 onChange={handleChange}
                 disabled={survivals.length === 0}
                 style={{
-                  ...inputStyle,
+                  ...selectStyle,
                   borderColor: errors.survival ? '#ef4444' : '#2d3447',
                   opacity: survivals.length === 0 ? 0.6 : 1,
                   cursor: survivals.length === 0 ? 'not-allowed' : 'pointer'
+                }}
+                onFocus={(e) => {
+                  if (survivals.length > 0) {
+                    e.target.style.borderColor = '#fbbf24';
+                    e.target.style.boxShadow = '0 0 0 3px rgba(251, 191, 36, 0.1)';
+                  }
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = errors.survival ? '#ef4444' : '#2d3447';
+                  e.target.style.boxShadow = 'none';
                 }}
               >
                 <option value="">
@@ -433,21 +482,109 @@ function CreateListing() {
               ...inputStyle,
               borderColor: errors.price ? '#ef4444' : '#2d3447'
             }}
-              onFocus={(e) => {
-                if (!errors.price) {
-                  e.target.style.borderColor = '#fbbf24';
-                  e.target.style.boxShadow = '0 0 0 3px rgba(251, 191, 36, 0.1)';
-                }
-              }}
-              onBlur={(e) => {
-                if (!errors.price) {
-                  e.target.style.borderColor = '#2d3447';
-                  e.target.style.boxShadow = 'none';
-                }
-              }}
+            onFocus={(e) => {
+              if (!errors.price) {
+                e.target.style.borderColor = '#fbbf24';
+                e.target.style.boxShadow = '0 0 0 3px rgba(251, 191, 36, 0.1)';
+              }
+            }}
+            onBlur={(e) => {
+              if (!errors.price) {
+                e.target.style.borderColor = '#2d3447';
+                e.target.style.boxShadow = 'none';
+              }
+            }}
+            onWheel={(e) => e.target.blur()}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                e.preventDefault();
+              }
+            }}
             placeholder="Enter price"
           />
           {errors.price && <div style={errorStyle}>{errors.price}</div>}
+        </div>
+
+        {/* Stock Field */}
+        <div style={inputGroupStyle}>
+          <label style={labelStyle} htmlFor="stock">
+            Stock Quantity *
+          </label>
+          <input
+            type="number"
+            id="stock"
+            name="stock"
+            value={formData.stock}
+            onChange={handleChange}
+            min="1"
+            step="1"
+            style={{
+              ...inputStyle,
+              borderColor: errors.stock ? '#ef4444' : '#2d3447'
+            }}
+            onFocus={(e) => {
+              if (!errors.stock) {
+                e.target.style.borderColor = '#fbbf24';
+                e.target.style.boxShadow = '0 0 0 3px rgba(251, 191, 36, 0.1)';
+              }
+            }}
+            onBlur={(e) => {
+              if (!errors.stock) {
+                e.target.style.borderColor = '#2d3447';
+                e.target.style.boxShadow = 'none';
+              }
+            }}
+            onWheel={(e) => e.target.blur()}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                e.preventDefault();
+              }
+            }}
+            placeholder="Enter stock quantity (e.g., 10, 50, 100)"
+          />
+          {errors.stock && <div style={errorStyle}>{errors.stock}</div>}
+          <div style={{ ...errorStyle, color: '#6b7280', marginTop: '4px' }}>
+            Number of units available for sale
+          </div>
+        </div>
+
+        {/* Description Field */}
+        <div style={inputGroupStyle}>
+          <label style={labelStyle} htmlFor="description">
+            Item Description (Enchantments, Details)
+          </label>
+          <textarea
+            id="description"
+            name="description"
+            value={formData.description}
+            onChange={handleChange}
+            rows="5"
+            maxLength="2000"
+            style={{
+              ...inputStyle,
+              minHeight: '120px',
+              resize: 'vertical',
+              fontFamily: 'inherit',
+              borderColor: errors.description ? '#ef4444' : '#2d3447'
+            }}
+            onFocus={(e) => {
+              if (!errors.description) {
+                e.target.style.borderColor = '#fbbf24';
+                e.target.style.boxShadow = '0 0 0 3px rgba(251, 191, 36, 0.1)';
+              }
+            }}
+            onBlur={(e) => {
+              if (!errors.description) {
+                e.target.style.borderColor = '#2d3447';
+                e.target.style.boxShadow = 'none';
+              }
+            }}
+            placeholder="e.g., Sharpness V, Unbreaking III, Mending, Looting III..."
+          />
+          {errors.description && <div style={errorStyle}>{errors.description}</div>}
+          <div style={{ ...errorStyle, color: '#6b7280', marginTop: '4px' }}>
+            {formData.description.length}/2000 characters. Include enchantments, item details, and any special notes.
+          </div>
         </div>
 
         {/* Options Error Message */}
