@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create axios instance with baseURL from environment variable
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://api.mcfleet.shop',
   headers: {
     'Content-Type': 'application/json'
   }
@@ -12,11 +12,11 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
-    
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
+
     return config;
   },
   (error) => {
@@ -34,11 +34,11 @@ apiClient.interceptors.response.use(
       // Clear auth state from localStorage
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      
+
       // Optionally redirect to login or home page
       // window.location.href = '/';
     }
-    
+
     return Promise.reject(error);
   }
 );

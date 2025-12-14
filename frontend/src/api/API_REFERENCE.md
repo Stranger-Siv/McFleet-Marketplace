@@ -1,6 +1,6 @@
 # API Reference
 
-Base URL: `http://localhost:5001/api/auth`
+Base URL: `https://api.mcfleet.shop/api/auth`
 
 All endpoints are prefixed with the base URL above.
 

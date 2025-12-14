@@ -1,8 +1,8 @@
 function Login() {
   const handleDiscordLogin = () => {
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.mcfleet.shop';
     const discordAuthUrl = `${apiBaseUrl}/api/auth/discord`;
-    
+
     // Redirect to Discord OAuth
     window.location.href = discordAuthUrl;
   };
@@ -80,7 +80,7 @@ function Login() {
         <div style={logoStyle}>M</div>
         <h1 style={titleStyle}>McFleet Marketplace</h1>
         <p style={subtitleStyle}>Premium Minecraft marketplace. Login with Discord to get started.</p>
-        <button 
+        <button
           onClick={handleDiscordLogin}
           style={buttonStyle}
           onMouseEnter={(e) => {
