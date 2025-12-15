@@ -35,5 +35,9 @@ const disputeSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Indexes for admin filters
+disputeSchema.index({ status: 1 });
+disputeSchema.index({ createdAt: -1 });
+
 export default mongoose.model('Dispute', disputeSchema);
 

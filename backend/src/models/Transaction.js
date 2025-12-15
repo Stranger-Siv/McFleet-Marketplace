@@ -51,5 +51,10 @@ const transactionSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Indexes for admin search/filter
+transactionSchema.index({ status: 1 });
+transactionSchema.index({ paymentMethod: 1 });
+transactionSchema.index({ createdAt: -1 });
+
 export default mongoose.model('Transaction', transactionSchema);
 

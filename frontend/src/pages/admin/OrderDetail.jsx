@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import apiClient from '../../api/axios';
 import OrderTimeline from '../../components/OrderTimeline';
+import MiddlemanInstructions from '../../components/MiddlemanInstructions';
 
 function AdminOrderDetail() {
   const { orderId } = useParams();
@@ -153,6 +154,14 @@ function AdminOrderDetail() {
 
       {/* Order Timeline */}
       <OrderTimeline order={order} />
+
+      <MiddlemanInstructions
+        orderId={orderId}
+        order={order}
+        user={null}
+        allowCreate={true}
+        tone="dark"
+      />
 
       <div style={sectionStyle}>
         <div style={infoRowStyle}>

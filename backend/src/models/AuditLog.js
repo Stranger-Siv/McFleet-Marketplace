@@ -23,5 +23,10 @@ const auditLogSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Indexes for admin search/filter
+auditLogSchema.index({ action: 1 });
+auditLogSchema.index({ targetType: 1 });
+auditLogSchema.index({ createdAt: -1 });
+
 export default mongoose.model('AuditLog', auditLogSchema);
 

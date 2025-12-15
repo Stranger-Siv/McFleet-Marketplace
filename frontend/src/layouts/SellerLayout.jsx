@@ -221,6 +221,20 @@ function SellerLayout() {
             My Listings
           </Link>
           <Link 
+            to="/seller/faq" 
+            style={{
+              ...(isActive('/seller/faq') ? activeLinkStyle : linkStyle),
+              width: isMobile ? '100%' : 'auto',
+              textAlign: isMobile ? 'left' : 'center',
+              padding: isMobile ? '12px 16px' : linkStyle.padding
+            }}
+            onClick={() => setMobileMenuOpen(false)}
+            onMouseEnter={(e) => !isActive('/seller/faq') && !isMobile && (e.target.style.color = '#ffffff')}
+            onMouseLeave={(e) => !isActive('/seller/faq') && !isMobile && (e.target.style.color = '#b8bcc8')}
+          >
+            FAQ
+          </Link>
+          <Link 
             to="/seller/orders" 
             style={{
               ...(isActive('/seller/orders') ? activeLinkStyle : linkStyle),

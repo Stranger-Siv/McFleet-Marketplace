@@ -4,6 +4,7 @@ import apiClient from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import OrderTimeline from '../../components/OrderTimeline';
 import DisputeModal from '../../components/DisputeModal';
+import MiddlemanInstructions from '../../components/MiddlemanInstructions';
 
 function SellerOrderDetail() {
   const { orderId } = useParams();
@@ -210,6 +211,14 @@ function SellerOrderDetail() {
 
       {/* Order Timeline */}
       <OrderTimeline order={order} />
+
+      <MiddlemanInstructions
+        orderId={orderId}
+        order={order}
+        user={user}
+        allowCreate={false}
+        tone="dark"
+      />
 
       <div style={sectionStyle}>
         <div style={infoRowStyle}>

@@ -15,11 +15,29 @@ import Rating from '../models/Rating.js';
 import AuditLog from '../models/AuditLog.js';
 import Category from '../models/Category.js';
 import Survival from '../models/Survival.js';
+import MiddlemanInstruction from '../models/MiddlemanInstruction.js';
 // import User from '../models/User.js';
 import { logAdminAction } from '../utils/auditLogger.js';
 import { maskOrderData, maskListingData, maskUserData } from '../utils/dataMasking.js';
 
 const router = express.Router();
+
+const isOrderParticipant = (order, user) => {
+  const userId = user?.userId;
+  if (!order || !userId) return false;
+  return (
+    order.buyer?.toString() === userId ||
+    order.seller?.toString() === userId ||
+    (order.middleman && order.middleman.toString() === userId)
+  );
+};
+
+const hasPendingInstruction = async (orderId) => {
+  return Boolean(await MiddlemanInstruction.exists({
+    order: orderId,
+    status: 'PENDING'
+  }));
+};
 
 router.get('/discord', passport.authenticate('discord', { session: false }));
 
@@ -37,7 +55,18 @@ router.get('/discord/callback',
       );
 
       // Sanitize and validate FRONTEND_URL
+      // Prefer env override; fall back to origin (for local testing) or localhost
       let frontendUrl = process.env.FRONTEND_URL || '';
+
+      // If env missing, try to derive from request origin (useful in local dev)
+      if (!frontendUrl && req.headers.origin && req.headers.origin.startsWith('http://localhost')) {
+        frontendUrl = req.headers.origin.replace(/\/$/, '');
+      }
+
+      // Final fallback for local dev
+      if (!frontendUrl && process.env.NODE_ENV !== 'production') {
+        frontendUrl = 'http://localhost:5173';
+      }
 
       // Remove any whitespace, newlines, and special characters that shouldn't be in URL
       frontendUrl = frontendUrl.trim().split(/[\s|]+/)[0]; // Take first part if multiple values separated by | or space
@@ -746,6 +775,126 @@ router.get('/orders/:orderId', protect, async (req, res) => {
   }
 });
 
+router.post('/orders/:orderId/instructions', protect, authorizeRoles('admin', 'middleman'), async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { targetUserId, targetRole, message, discordId } = req.body;
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({ message: 'Instruction message is required' });
+    }
+
+    const order = await Order.findById(orderId).select('buyer seller middleman');
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    const isAssignedMiddleman = order.middleman?.toString() === req.user.userId;
+    if (req.user.role === 'middleman' && !isAssignedMiddleman) {
+      return res.status(403).json({ message: 'Only the assigned middleman can send instructions for this order' });
+    }
+
+    const targetIdStr = targetUserId?.toString();
+    const normalizedRole = targetRole === 'seller' ? 'seller' : 'buyer';
+    const expectedTargetId = normalizedRole === 'buyer'
+      ? order.buyer?.toString()
+      : order.seller?.toString();
+
+    if (!expectedTargetId || targetIdStr !== expectedTargetId) {
+      return res.status(400).json({ message: 'Instruction must target the buyer or seller of this order' });
+    }
+
+    const instruction = await MiddlemanInstruction.create({
+      order: orderId,
+      targetUser: targetIdStr,
+      targetRole: normalizedRole,
+      message: message.trim(),
+      discordId: discordId?.trim() || null,
+      createdBy: req.user.userId
+    });
+
+    res.json({
+      success: true,
+      instruction
+    });
+  } catch (error) {
+    console.error('Create instruction error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/orders/:orderId/instructions', protect, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    const order = await Order.findById(orderId).select('buyer seller middleman');
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    const isBuyer = order.buyer?.toString() === req.user.userId;
+    const isSeller = order.seller?.toString() === req.user.userId;
+    const isAssignedMiddleman = order.middleman && order.middleman.toString() === req.user.userId;
+    const isAdmin = req.user.role === 'admin';
+
+    if (!isBuyer && !isSeller && !isAssignedMiddleman && !isAdmin) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+
+    const query = { order: orderId };
+    if (isBuyer || isSeller) {
+      query.targetUser = req.user.userId;
+    }
+
+    const instructions = await MiddlemanInstruction.find(query)
+      .populate('createdBy', 'discordUsername role')
+      .populate('targetUser', 'discordUsername role')
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      instructions
+    });
+  } catch (error) {
+    console.error('Get instructions error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.patch('/instructions/:instructionId/acknowledge', protect, async (req, res) => {
+  try {
+    const { instructionId } = req.params;
+
+    const instruction = await MiddlemanInstruction.findById(instructionId);
+    if (!instruction) {
+      return res.status(404).json({ message: 'Instruction not found' });
+    }
+
+    if (instruction.targetUser.toString() !== req.user.userId) {
+      return res.status(403).json({ message: 'Only the target user can acknowledge this instruction' });
+    }
+
+    if (instruction.status === 'ACKNOWLEDGED') {
+      return res.json({
+        success: true,
+        instruction
+      });
+    }
+
+    instruction.status = 'ACKNOWLEDGED';
+    instruction.acknowledgedAt = new Date();
+    await instruction.save();
+
+    res.json({
+      success: true,
+      instruction
+    });
+  } catch (error) {
+    console.error('Acknowledge instruction error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 router.post('/orders/:orderId/assign-middleman', protect, authorizeRoles('admin'), async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -861,13 +1010,57 @@ router.post('/users/:userId/remove-middleman', protect, authorizeRoles('admin'),
 
 router.get('/users', protect, authorizeRoles('admin'), async (req, res) => {
   try {
-    const users = await User.find()
-      .select('_id discordUsername role banned createdAt')
-      .sort({ createdAt: -1 });
+    const {
+      search,
+      role,
+      banned,
+      dateFrom,
+      dateTo,
+      page = 1,
+      limit = 20
+    } = req.query;
+
+    const query = {};
+
+    if (search && search.trim()) {
+      query.discordUsername = { $regex: search.trim(), $options: 'i' };
+    }
+
+    if (role) {
+      query.role = role;
+    }
+
+    if (banned === 'true') {
+      query.banned = true;
+    } else if (banned === 'false') {
+      query.banned = false;
+    }
+
+    if (dateFrom || dateTo) {
+      query.createdAt = {};
+      if (dateFrom) query.createdAt.$gte = new Date(dateFrom);
+      if (dateTo) query.createdAt.$lte = new Date(dateTo);
+    }
+
+    const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
+    const skip = (pageNum - 1) * limitNum;
+
+    const [users, total] = await Promise.all([
+      User.find(query)
+        .select('_id discordUsername role banned createdAt')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum),
+      User.countDocuments(query)
+    ]);
 
     res.json({
       success: true,
-      users
+      users,
+      page: pageNum,
+      total,
+      totalPages: Math.ceil(total / limitNum)
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -942,6 +1135,10 @@ router.post('/orders/:orderId/collect', protect, authorizeRoles('middleman'), as
       return res.status(400).json({ message: 'Cannot perform actions on a disputed order' });
     }
 
+    if (await hasPendingInstruction(orderId)) {
+      return res.status(400).json({ message: 'Pending middleman instruction must be acknowledged before progressing the order' });
+    }
+
     // Block actions on disputed orders
     if (order.status === 'disputed') {
       return res.status(400).json({ message: 'Cannot perform actions on a disputed order' });
@@ -980,6 +1177,10 @@ router.post('/orders/:orderId/deliver', protect, authorizeRoles('middleman'), as
     // Block actions on disputed orders
     if (order.status === 'disputed') {
       return res.status(400).json({ message: 'Cannot perform actions on a disputed order' });
+    }
+
+    if (await hasPendingInstruction(orderId)) {
+      return res.status(400).json({ message: 'Pending middleman instruction must be acknowledged before progressing the order' });
     }
 
     // Block actions on disputed orders
@@ -1050,6 +1251,10 @@ router.post('/orders/:orderId/mark-paid', protect, authorizeRoles('middleman'), 
       return res.status(400).json({ message: 'Cannot perform actions on a disputed order' });
     }
 
+    if (await hasPendingInstruction(orderId)) {
+      return res.status(400).json({ message: 'Pending middleman instruction must be acknowledged before progressing the order' });
+    }
+
     if (order.status !== 'pending_payment') {
       return res.status(400).json({ message: 'Order already paid or invalid state' });
     }
@@ -1079,6 +1284,10 @@ router.post('/orders/:orderId/complete', protect, authorizeRoles('admin'), async
     // Block completion of disputed orders (admin must resolve dispute first)
     if (order.status === 'disputed') {
       return res.status(400).json({ message: 'Cannot complete a disputed order. Resolve the dispute first.' });
+    }
+
+    if (await hasPendingInstruction(orderId)) {
+      return res.status(400).json({ message: 'Pending middleman instruction must be acknowledged before progressing the order' });
     }
 
     if (order.status !== 'item_delivered') {
@@ -1735,13 +1944,61 @@ router.post('/users/:userId/unban', protect, authorizeRoles('admin'), async (req
 // Admin: Get all listings (including disabled)
 router.get('/admin/listings', protect, authorizeRoles('admin'), async (req, res) => {
   try {
-    const listings = await ItemListing.find({})
-      .populate('seller', 'discordUsername discordId')
-      .sort({ createdAt: -1 });
+    const {
+      search,
+      status,
+      minPrice,
+      maxPrice,
+      dateFrom,
+      dateTo,
+      page = 1,
+      limit = 20
+    } = req.query;
+
+    const query = {};
+
+    if (search && search.trim()) {
+      query.$or = [
+        { title: { $regex: search.trim(), $options: 'i' } },
+        { itemName: { $regex: search.trim(), $options: 'i' } }
+      ];
+    }
+
+    if (status) {
+      query.status = status;
+    }
+
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      query.price = {};
+      if (minPrice !== undefined) query.price.$gte = Number(minPrice);
+      if (maxPrice !== undefined) query.price.$lte = Number(maxPrice);
+    }
+
+    if (dateFrom || dateTo) {
+      query.createdAt = {};
+      if (dateFrom) query.createdAt.$gte = new Date(dateFrom);
+      if (dateTo) query.createdAt.$lte = new Date(dateTo);
+    }
+
+    const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+    const limitNum = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
+    const skip = (pageNum - 1) * limitNum;
+
+    const [listings, total] = await Promise.all([
+      ItemListing.find(query)
+        .populate('seller', 'discordUsername discordId')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum),
+      ItemListing.countDocuments(query)
+    ]);
 
     res.json({
       success: true,
-      listings
+      listings,
+      page: pageNum,
+      total,
+      totalPages: Math.ceil(total / limitNum)
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });

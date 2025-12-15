@@ -18,6 +18,8 @@ const sellerRequestSchema = new mongoose.Schema({
 
 // Index to ensure one pending request per user
 sellerRequestSchema.index({ user: 1, status: 1 });
+// For admin filters
+sellerRequestSchema.index({ status: 1, createdAt: -1 });
 
 export default mongoose.model('SellerRequest', sellerRequestSchema);
 

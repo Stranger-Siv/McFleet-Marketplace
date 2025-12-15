@@ -337,6 +337,20 @@ function BuyerLayout() {
             Marketplace
           </Link>
           <Link
+            to="/buyer/faq"
+            style={{
+              ...(isActive('/buyer/faq') ? activeNavLinkStyle : navLinkStyle),
+              width: isMobile ? '100%' : 'auto',
+              textAlign: isMobile ? 'left' : 'center',
+              padding: isMobile ? '12px 16px' : navLinkStyle.padding
+            }}
+            onClick={() => setMobileMenuOpen(false)}
+            onMouseEnter={(e) => !isActive('/buyer/faq') && !isMobile && (e.target.style.color = '#ffffff')}
+            onMouseLeave={(e) => !isActive('/buyer/faq') && !isMobile && (e.target.style.color = '#b8bcc8')}
+          >
+            FAQ
+          </Link>
+          <Link
             to="/buyer/orders"
             style={{
               ...(isActive('/buyer/orders') ? activeNavLinkStyle : navLinkStyle),

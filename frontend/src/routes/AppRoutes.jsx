@@ -28,6 +28,7 @@ import Listings from '../pages/admin/Listings';
 import AuditLogs from '../pages/admin/AuditLogs';
 import Disputes from '../pages/admin/Disputes';
 import AdminOrderDetail from '../pages/admin/OrderDetail';
+import FAQ from '../pages/FAQ';
 import Login from '../pages/Login';
 import AuthSuccess from '../pages/AuthSuccess';
 import Forbidden from '../pages/Forbidden';
@@ -75,6 +76,17 @@ function AppRoutes() {
       </Route>
 
       <Route
+        path="/buyer/faq"
+        element={
+          <ProtectedRoute allowedRoles={['user']}>
+            <BuyerLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<FAQ />} />
+      </Route>
+
+      <Route
         path="/become-seller"
         element={
           <ProtectedRoute allowedRoles={['user']}>
@@ -99,6 +111,17 @@ function AppRoutes() {
         <Route path="orders" element={<SellerOrders />} />
         <Route path="transactions" element={<Transactions />} />
         <Route path="orders/:orderId" element={<SellerOrderDetail />} />
+      </Route>
+
+      <Route
+        path="/seller/faq"
+        element={
+          <ProtectedRoute allowedRoles={['seller']}>
+            <SellerLayout />
+          </ProtectedRoute>
+        }
+      >
+        <Route index element={<FAQ />} />
       </Route>
 
       <Route

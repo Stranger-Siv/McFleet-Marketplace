@@ -47,5 +47,11 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Indexes to speed up admin search/filter
+userSchema.index({ discordUsername: 1 });
+userSchema.index({ role: 1 });
+userSchema.index({ banned: 1 });
+userSchema.index({ createdAt: -1 });
+
 export default mongoose.model('User', userSchema);
 

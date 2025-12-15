@@ -5,6 +5,7 @@ import { usePolling } from '../../hooks/usePolling';
 import { useAuth } from '../../context/AuthContext';
 import ConfirmationModal from '../../components/ConfirmationModal';
 import OrderTimeline from '../../components/OrderTimeline';
+import MiddlemanInstructions from '../../components/MiddlemanInstructions';
 
 function OrderDetail() {
   const { orderId } = useParams();
@@ -17,6 +18,7 @@ function OrderDetail() {
   const [actionError, setActionError] = useState(null);
   const isActionInProgress = useRef(false);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, action: null });
+  const [hasPendingInstructions, setHasPendingInstructions] = useState(false);
 
   const fetchOrder = async (showLoading = true) => {
     try {
@@ -337,6 +339,15 @@ function OrderDetail() {
       {/* Order Timeline */}
       <OrderTimeline order={order} />
 
+      <MiddlemanInstructions
+        orderId={orderId}
+        order={order}
+        user={user}
+        allowCreate={true}
+        tone="light"
+        onPendingChange={setHasPendingInstructions}
+      />
+
       {/* Order Status Section */}
       <div style={sectionStyle}>
         <div style={sectionTitleStyle}>Order Information</div>
@@ -547,60 +558,60 @@ function OrderDetail() {
             {order.status === 'pending_payment' && (
               <button
                 onClick={handleMarkPaidClick}
-                disabled={actionLoading}
+                disabled={actionLoading || hasPendingInstructions}
                 style={{
                   padding: '12px 24px',
-                  backgroundColor: '#10b981',
+                  backgroundColor: actionLoading || hasPendingInstructions ? '#9ca3af' : '#10b981',
                   color: 'white',
                   border: 'none',
                   borderRadius: '4px',
                   fontSize: '16px',
                   fontWeight: '500',
-                  cursor: actionLoading ? 'not-allowed' : 'pointer',
-                  opacity: actionLoading ? 0.6 : 1
+                  cursor: actionLoading || hasPendingInstructions ? 'not-allowed' : 'pointer',
+                  opacity: actionLoading || hasPendingInstructions ? 0.6 : 1
                 }}
               >
-                {actionLoading ? 'Processing...' : 'Mark Paid'}
+                {actionLoading ? 'Processing...' : hasPendingInstructions ? 'Pending instruction' : 'Mark Paid'}
               </button>
             )}
 
             {order.status === 'paid' && (
               <button
                 onClick={handleCollectItemClick}
-                disabled={actionLoading}
+                disabled={actionLoading || hasPendingInstructions}
                 style={{
                   padding: '12px 24px',
-                  backgroundColor: '#8b5cf6',
+                  backgroundColor: actionLoading || hasPendingInstructions ? '#9ca3af' : '#8b5cf6',
                   color: 'white',
                   border: 'none',
                   borderRadius: '4px',
                   fontSize: '16px',
                   fontWeight: '500',
-                  cursor: actionLoading ? 'not-allowed' : 'pointer',
-                  opacity: actionLoading ? 0.6 : 1
+                  cursor: actionLoading || hasPendingInstructions ? 'not-allowed' : 'pointer',
+                  opacity: actionLoading || hasPendingInstructions ? 0.6 : 1
                 }}
               >
-                {actionLoading ? 'Processing...' : 'Collect Item'}
+                {actionLoading ? 'Processing...' : hasPendingInstructions ? 'Pending instruction' : 'Collect Item'}
               </button>
             )}
 
             {order.status === 'item_collected' && (
               <button
                 onClick={handleDeliverItemClick}
-                disabled={actionLoading}
+                disabled={actionLoading || hasPendingInstructions}
                 style={{
                   padding: '12px 24px',
-                  backgroundColor: '#3b82f6',
+                  backgroundColor: actionLoading || hasPendingInstructions ? '#9ca3af' : '#3b82f6',
                   color: 'white',
                   border: 'none',
                   borderRadius: '4px',
                   fontSize: '16px',
                   fontWeight: '500',
-                  cursor: actionLoading ? 'not-allowed' : 'pointer',
-                  opacity: actionLoading ? 0.6 : 1
+                  cursor: actionLoading || hasPendingInstructions ? 'not-allowed' : 'pointer',
+                  opacity: actionLoading || hasPendingInstructions ? 0.6 : 1
                 }}
               >
-                {actionLoading ? 'Processing...' : 'Deliver Item'}
+                {actionLoading ? 'Processing...' : hasPendingInstructions ? 'Pending instruction' : 'Deliver Item'}
               </button>
             )}
           </div>
@@ -628,6 +639,11 @@ function OrderDetail() {
             {order.status === 'item_collected' && (
               <div>
                 <strong>Next Step:</strong> Deliver the item to the buyer and mark as delivered.
+              </div>
+            )}
+            {hasPendingInstructions && (
+              <div style={{ marginTop: '8px', color: '#b45309' }}>
+                Pending instruction must be acknowledged before progressing the order.
               </div>
             )}
           </div>

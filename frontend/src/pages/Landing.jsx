@@ -6,7 +6,7 @@ function Landing() {
   const { isMobile, isTablet, isDesktop } = useResponsive();
 
   const handleDiscordLogin = () => {
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://mcfleet-marketplace-susu.onrender.com';
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
     const discordAuthUrl = `${apiBaseUrl}/api/auth/discord`;
     window.location.href = discordAuthUrl;
   };
@@ -574,6 +574,58 @@ function Landing() {
         >
           Get Started with Discord
         </button>
+      </section>
+
+      {/* Buyer & Seller Rules */}
+      <section style={sectionStyle}>
+        <h2 style={sectionTitleStyle}>Buyer & Seller Rules</h2>
+        <p style={sectionSubtitleStyle}>
+          Quick reminders to keep every trade safe. Full details are shown in-app after login.
+        </p>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
+          gap: '16px'
+        }}>
+          <div style={{
+            backgroundColor: '#1e2338',
+            border: '1px solid #2d3447',
+            borderRadius: '12px',
+            padding: '20px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.25)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+              <span style={{ fontSize: '20px' }}>🛡️</span>
+              <h3 style={{ margin: 0, color: '#ffffff', fontSize: '18px' }}>Buyer Rules</h3>
+            </div>
+            <ul style={{ margin: 0, paddingLeft: '18px', color: '#b8bcc8', lineHeight: 1.7, fontSize: '14px' }}>
+              <li>Only pay after middleman instructions; never outside the flow.</li>
+              <li>Follow middleman verification steps (ID/IGN/Discord) exactly.</li>
+              <li>Do not share personal/payment info outside the secured chat.</li>
+              <li>Report suspicious behavior immediately; open disputes when needed.</li>
+              <li>Responses must be through the provided acknowledge buttons.</li>
+            </ul>
+          </div>
+          <div style={{
+            backgroundColor: '#1e2338',
+            border: '1px solid #2d3447',
+            borderRadius: '12px',
+            padding: '20px',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.25)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+              <span style={{ fontSize: '20px' }}>✅</span>
+              <h3 style={{ margin: 0, color: '#ffffff', fontSize: '18px' }}>Seller Rules</h3>
+            </div>
+            <ul style={{ margin: 0, paddingLeft: '18px', color: '#b8bcc8', lineHeight: 1.7, fontSize: '14px' }}>
+              <li>Provide accurate listings (price, stock, description, survival).</li>
+              <li>Wait for middleman instructions before handing over any item.</li>
+              <li>Keep all trade communication within the platform/assigned middleman.</li>
+              <li>No off-platform payments or side deals; follow payout steps only.</li>
+              <li>Respect disputes and admin reviews; respond promptly to requests.</li>
+            </ul>
+          </div>
+        </div>
       </section>
 
       {/* Footer */}

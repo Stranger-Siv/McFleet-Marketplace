@@ -49,5 +49,12 @@ const itemListingSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Indexes for admin search/filter
+itemListingSchema.index({ title: 1 });
+itemListingSchema.index({ itemName: 1 });
+itemListingSchema.index({ status: 1 });
+itemListingSchema.index({ price: 1 });
+itemListingSchema.index({ createdAt: -1 });
+
 export default mongoose.model('ItemListing', itemListingSchema);
 
