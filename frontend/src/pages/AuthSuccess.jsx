@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
@@ -7,6 +7,7 @@ function AuthSuccess() {
   const navigate = useNavigate();
   const { login } = useAuth();
   const hasProcessed = useRef(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     // Prevent multiple executions
@@ -19,7 +20,10 @@ function AuthSuccess() {
     if (!token) {
       // No token in URL, redirect to login
       hasProcessed.current = true;
-      navigate('/login', { replace: true });
+      setError('No token found in URL');
+      setTimeout(() => {
+        navigate('/login', { replace: true });
+      }, 2000);
       return;
     }
 
@@ -62,13 +66,65 @@ function AuthSuccess() {
       // Invalid token, redirect to login
       console.error('Token decode error:', error);
       hasProcessed.current = true;
-      navigate('/login', { replace: true });
+      setError('Failed to process authentication. Redirecting to login...');
+      setTimeout(() => {
+        navigate('/login', { replace: true });
+      }, 2000);
     }
-  }, []); // Empty dependency array - only run once on mount
+  }, [searchParams, navigate, login]); // Include dependencies
+
+  const containerStyle = {
+    minHeight: '100vh',
+    background: 'linear-gradient(135deg, #0a0e27 0%, #131829 100%)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#ffffff',
+    padding: '20px'
+  };
+
+  const cardStyle = {
+    backgroundColor: '#1e2338',
+    border: '1px solid #2d3447',
+    borderRadius: '16px',
+    padding: '48px',
+    textAlign: 'center',
+    maxWidth: '420px',
+    width: '100%'
+  };
+
+  const spinnerStyle = {
+    width: '40px',
+    height: '40px',
+    border: '4px solid #2d3447',
+    borderTop: '4px solid #fbbf24',
+    borderRadius: '50%',
+    animation: 'spin 1s linear infinite',
+    margin: '0 auto 24px'
+  };
 
   return (
-    <div>
-      <p>Processing login...</p>
+    <div style={containerStyle}>
+      <div style={cardStyle}>
+        {error ? (
+          <>
+            <div style={{ color: '#ef4444', marginBottom: '16px' }}>⚠️</div>
+            <p style={{ color: '#ef4444', marginBottom: '16px' }}>{error}</p>
+          </>
+        ) : (
+          <>
+            <div style={spinnerStyle}></div>
+            <h2 style={{ color: '#ffffff', marginBottom: '12px' }}>Processing login...</h2>
+            <p style={{ color: '#b8bcc8' }}>Please wait while we authenticate you.</p>
+          </>
+        )}
+        <style>{`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
     </div>
   );
 }

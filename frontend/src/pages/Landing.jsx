@@ -6,7 +6,7 @@ function Landing() {
   const { isMobile, isTablet, isDesktop } = useResponsive();
 
   const handleDiscordLogin = () => {
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://mcfleet-marketplace-4inq.onrender.com';
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
     const discordAuthUrl = `${apiBaseUrl}/api/auth/discord`;
     window.location.href = discordAuthUrl;
   };
