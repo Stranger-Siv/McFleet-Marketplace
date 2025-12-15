@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create axios instance with baseURL from environment variable
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://api.mcfleet.shop',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://mcfleet-marketplace-4inq.onrender.com',
   headers: {
     'Content-Type': 'application/json'
   }

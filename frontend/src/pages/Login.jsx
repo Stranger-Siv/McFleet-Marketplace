@@ -1,6 +1,6 @@
 function Login() {
   const handleDiscordLogin = () => {
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.mcfleet.shop';
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://mcfleet-marketplace-4inq.onrender.com';
     const discordAuthUrl = `${apiBaseUrl}/api/auth/discord`;
 
     // Redirect to Discord OAuth
