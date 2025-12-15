@@ -3,7 +3,7 @@ import axios from 'axios';
 // Create axios instance with baseURL from environment variable
 const apiClient = axios.create({
   // Default to local API for testing; override with VITE_API_BASE_URL when deploying
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://mcfleet-marketplace-susu.onrender.com',
   headers: {
     'Content-Type': 'application/json'
   }
