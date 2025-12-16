@@ -42,7 +42,7 @@ const itemListingSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['active', 'sold', 'removed', 'disabled_by_admin'],
+    enum: ['active', 'paused', 'sold', 'removed', 'disabled_by_admin'],
     default: 'active'
   }
 }, {

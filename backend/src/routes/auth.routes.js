@@ -199,9 +199,9 @@ router.get('/seller/earnings', protect, authorizeRoles('seller'), async (req, re
 
 router.get('/seller/listings', protect, authorizeRoles('seller'), async (req, res) => {
   try {
-    // Sellers can see all their listings including disabled ones
+    // Sellers can see all their listings including paused and disabled ones
     const listings = await ItemListing.find({ seller: req.user.userId })
-      .select('_id title price stock description status createdAt')
+      .select('_id title itemName category survival price stock description status createdAt')
       .sort({ createdAt: -1 });
 
     res.json({
@@ -388,7 +388,7 @@ router.get('/listings', async (req, res) => {
   try {
     const { survival, category, itemName } = req.query;
 
-    // Only show active listings to buyers (exclude disabled_by_admin and removed)
+    // Only show active listings to buyers (exclude paused, disabled_by_admin, and removed)
     const query = { status: 'active' };
 
     if (survival) {
@@ -575,6 +575,203 @@ router.put('/listings/:listingId/stock', protect, authorizeRoles('seller'), asyn
     });
   } catch (error) {
     console.error('Stock update error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Helper function to check if listing has active/pending orders
+const hasActiveOrders = async (listingId) => {
+  const activeOrderStatuses = ['pending_payment', 'paid', 'item_collected', 'item_delivered', 'disputed'];
+  const activeOrders = await Order.find({
+    listing: listingId,
+    status: { $in: activeOrderStatuses }
+  });
+  return activeOrders.length > 0;
+};
+
+// Edit listing endpoint
+router.put('/listings/:listingId', protect, authorizeRoles('seller'), async (req, res) => {
+  try {
+    const { listingId } = req.params;
+    const { itemName, price, stock, category, description } = req.body;
+
+    const listing = await ItemListing.findById(listingId);
+
+    if (!listing) {
+      return res.status(404).json({ message: 'Listing not found' });
+    }
+
+    // Verify seller owns this listing
+    if (listing.seller.toString() !== req.user.userId) {
+      return res.status(403).json({ message: 'You can only edit your own listings' });
+    }
+
+    // Check for active/pending orders
+    if (await hasActiveOrders(listingId)) {
+      return res.status(400).json({ 
+        message: 'Listings with active or pending orders cannot be edited' 
+      });
+    }
+
+    // Validate and update fields
+    if (itemName !== undefined) {
+      if (!itemName.trim()) {
+        return res.status(400).json({ message: 'Item name is required' });
+      }
+      listing.itemName = itemName.trim();
+    }
+
+    if (price !== undefined) {
+      const priceValue = parseFloat(price);
+      if (isNaN(priceValue) || priceValue <= 0) {
+        return res.status(400).json({ message: 'Price must be greater than 0' });
+      }
+      listing.price = priceValue;
+    }
+
+    if (stock !== undefined) {
+      const stockValue = parseInt(stock);
+      if (!Number.isInteger(stockValue) || stockValue < 0) {
+        return res.status(400).json({ message: 'Stock cannot be negative' });
+      }
+      listing.stock = stockValue;
+      
+      // Update status based on stock
+      if (stockValue === 0 && listing.status === 'active') {
+        listing.status = 'sold';
+      } else if (stockValue > 0 && listing.status === 'sold') {
+        listing.status = 'active';
+      }
+    }
+
+    if (category !== undefined) {
+      // Validate category exists
+      const categoryExists = await Category.findOne({ name: category, active: true });
+      if (!categoryExists) {
+        return res.status(400).json({ message: 'Invalid or inactive category' });
+      }
+      listing.category = category;
+    }
+
+    if (description !== undefined) {
+      if (description.length > 2000) {
+        return res.status(400).json({ message: 'Description cannot exceed 2000 characters' });
+      }
+      listing.description = description.trim();
+    }
+
+    await listing.save();
+
+    res.json({
+      success: true,
+      listing,
+      message: 'Listing updated successfully'
+    });
+  } catch (error) {
+    console.error('Listing edit error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Pause/Resume listing endpoint
+router.patch('/listings/:listingId/pause', protect, authorizeRoles('seller'), async (req, res) => {
+  try {
+    const { listingId } = req.params;
+    const { action } = req.body; // 'pause' or 'resume'
+
+    if (!action || !['pause', 'resume'].includes(action)) {
+      return res.status(400).json({ message: 'Action must be either "pause" or "resume"' });
+    }
+
+    const listing = await ItemListing.findById(listingId);
+
+    if (!listing) {
+      return res.status(404).json({ message: 'Listing not found' });
+    }
+
+    // Verify seller owns this listing
+    if (listing.seller.toString() !== req.user.userId) {
+      return res.status(403).json({ message: 'You can only pause/resume your own listings' });
+    }
+
+    // Check for active/pending orders when pausing
+    if (action === 'pause') {
+      if (await hasActiveOrders(listingId)) {
+        return res.status(400).json({ 
+          message: 'Listings with active or pending orders cannot be paused' 
+        });
+      }
+      if (listing.status === 'paused') {
+        return res.status(400).json({ message: 'Listing is already paused' });
+      }
+      listing.status = 'paused';
+    } else {
+      // Resume
+      if (listing.status !== 'paused') {
+        return res.status(400).json({ message: 'Listing is not paused' });
+      }
+      // Check for active orders when resuming
+      if (await hasActiveOrders(listingId)) {
+        return res.status(400).json({ 
+          message: 'Cannot resume listing with active or pending orders' 
+        });
+      }
+      // Resume to active if stock > 0, otherwise sold
+      listing.status = listing.stock > 0 ? 'active' : 'sold';
+    }
+
+    await listing.save();
+
+    res.json({
+      success: true,
+      listing,
+      message: `Listing ${action === 'pause' ? 'paused' : 'resumed'} successfully`
+    });
+  } catch (error) {
+    console.error('Pause/resume error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Delete listing endpoint (seller)
+router.delete('/listings/:listingId', protect, authorizeRoles('seller'), async (req, res) => {
+  try {
+    const { listingId } = req.params;
+
+    const listing = await ItemListing.findById(listingId);
+
+    if (!listing) {
+      return res.status(404).json({ message: 'Listing not found' });
+    }
+
+    // Verify seller owns this listing
+    if (listing.seller.toString() !== req.user.userId) {
+      return res.status(403).json({ message: 'You can only delete your own listings' });
+    }
+
+    // Check for active/pending orders
+    if (await hasActiveOrders(listingId)) {
+      return res.status(400).json({ 
+        message: 'Listings with active or pending orders cannot be deleted' 
+      });
+    }
+
+    // Prevent deletion of admin-disabled listings (seller should contact admin)
+    if (listing.status === 'disabled_by_admin') {
+      return res.status(400).json({ 
+        message: 'Cannot delete listings disabled by admin. Please contact support.' 
+      });
+    }
+
+    // Permanently delete the listing
+    await ItemListing.findByIdAndDelete(listingId);
+
+    res.json({
+      success: true,
+      message: 'Listing deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete listing error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

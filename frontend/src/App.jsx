@@ -16,7 +16,7 @@ function App() {
   useEffect(() => {
     const quickCheck = async () => {
       try {
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://mcfleet-marketplace-susu.onrender.com';
         const response = await fetch(`${apiBaseUrl}/api/auth/listings?limit=1`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }

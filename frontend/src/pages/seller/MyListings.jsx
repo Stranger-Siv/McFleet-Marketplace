@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import apiClient from '../../api/axios';
 import { usePolling } from '../../hooks/usePolling';
 import SkeletonTableRow from '../../components/skeletons/SkeletonTableRow';
+import EditListingModal from '../../components/EditListingModal';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
 function MyListings() {
   const [listings, setListings] = useState([]);
@@ -10,6 +12,38 @@ function MyListings() {
   const [editingStock, setEditingStock] = useState(null);
   const [stockValue, setStockValue] = useState('');
   const [stockError, setStockError] = useState(null);
+  const [editingListing, setEditingListing] = useState(null);
+  const [pausingListing, setPausingListing] = useState(null);
+  const [deletingListing, setDeletingListing] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
+  const [actionError, setActionError] = useState(null);
+  const [listingsWithActiveOrders, setListingsWithActiveOrders] = useState(new Set());
+  const [checkingOrders, setCheckingOrders] = useState(false);
+
+  // Check for active orders for all listings
+  const checkActiveOrdersForListings = async () => {
+    try {
+      setCheckingOrders(true);
+      const response = await apiClient.get('/api/auth/seller/orders');
+      if (response.data.success) {
+        const activeStatuses = ['pending_payment', 'paid', 'item_collected', 'item_delivered', 'disputed'];
+        const activeOrdersSet = new Set();
+        
+        response.data.orders.forEach(order => {
+          if (activeStatuses.includes(order.status) && order.listing) {
+            const listingId = typeof order.listing === 'object' ? order.listing._id : order.listing;
+            activeOrdersSet.add(listingId);
+          }
+        });
+        
+        setListingsWithActiveOrders(activeOrdersSet);
+      }
+    } catch (err) {
+      console.error('Error checking active orders:', err);
+    } finally {
+      setCheckingOrders(false);
+    }
+  };
 
   const fetchListings = async () => {
     try {
@@ -18,7 +52,13 @@ function MyListings() {
       const response = await apiClient.get('/api/auth/seller/listings');
 
       if (response.data.success) {
-        setListings(response.data.listings || []);
+        const fetchedListings = response.data.listings || [];
+        setListings(fetchedListings);
+        
+        // Check active orders after listings are loaded
+        if (fetchedListings.length > 0) {
+          checkActiveOrdersForListings();
+        }
       } else {
         setError('Failed to load listings');
       }
@@ -37,10 +77,30 @@ function MyListings() {
   // Set up polling (30 seconds interval)
   usePolling(fetchListings, 30000);
 
+
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case 'active':
+        return 'Active';
+      case 'paused':
+        return 'Paused';
+      case 'sold':
+        return 'Sold';
+      case 'removed':
+        return 'Disabled';
+      case 'disabled_by_admin':
+        return 'Removed by Admin';
+      default:
+        return status;
+    }
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'active':
         return '#10b981'; // green
+      case 'paused':
+        return '#f59e0b'; // orange/yellow
       case 'sold':
         return '#3b82f6'; // blue
       case 'removed':
@@ -52,18 +112,63 @@ function MyListings() {
     }
   };
 
-  const getStatusLabel = (status) => {
-    switch (status) {
-      case 'active':
-        return 'Active';
-      case 'sold':
-        return 'Sold';
-      case 'removed':
-        return 'Disabled';
-      case 'disabled_by_admin':
-        return 'Removed by Admin';
-      default:
-        return status;
+  const handleEditClick = (listing) => {
+    setEditingListing(listing);
+    setActionError(null);
+  };
+
+  const handleEditSuccess = () => {
+    fetchListings();
+  };
+
+  const handlePauseResume = async (listing) => {
+    try {
+      setPausingListing(listing._id);
+      setActionError(null);
+
+      const action = listing.status === 'paused' ? 'resume' : 'pause';
+      const response = await apiClient.patch(`/api/auth/listings/${listing._id}/pause`, {
+        action
+      });
+
+      if (response.data.success) {
+        fetchListings(); // Refresh listings (this will also re-check active orders)
+      } else {
+        setActionError('Failed to update listing status');
+      }
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || 'Failed to update listing status';
+      setActionError(errorMessage);
+    } finally {
+      setPausingListing(null);
+    }
+  };
+
+  const handleDeleteClick = (listing) => {
+    setShowDeleteConfirm(listing);
+    setActionError(null);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!showDeleteConfirm) return;
+
+    try {
+      setDeletingListing(showDeleteConfirm._id);
+      setActionError(null);
+
+      const response = await apiClient.delete(`/api/auth/listings/${showDeleteConfirm._id}`);
+
+      if (response.data.success) {
+        setShowDeleteConfirm(null);
+        fetchListings(); // Refresh listings
+      } else {
+        setActionError('Failed to delete listing');
+      }
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || 'Failed to delete listing';
+      setActionError(errorMessage);
+    } finally {
+      setDeletingListing(null);
     }
   };
 
@@ -363,14 +468,292 @@ function MyListings() {
                 <div style={detailStyle}>
                   <strong>Created:</strong> {new Date(listing.createdAt).toLocaleDateString()}
                 </div>
+                {listingsWithActiveOrders.has(listing._id) && (
+                  <div style={{
+                    marginTop: '12px',
+                    padding: '10px 14px',
+                    backgroundColor: '#f59e0b',
+                    border: '1px solid #d97706',
+                    borderRadius: '6px',
+                    color: '#ffffff',
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    <span>⚠️</span>
+                    <span>This listing has active or pending orders. Editing, pausing, and deletion are disabled until all orders are completed or cancelled.</span>
+                  </div>
+                )}
+                {actionError && (
+                  <div style={{ color: '#ef4444', fontSize: '12px', marginTop: '8px' }}>
+                    {actionError}
+                  </div>
+                )}
               </div>
-              <div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'flex-end' }}>
                 <span style={statusBadgeStyle(listing.status)}>
                   {getStatusLabel(listing.status)}
                 </span>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => handleEditClick(listing)}
+                    disabled={pausingListing === listing._id || listing.status === 'disabled_by_admin' || listingsWithActiveOrders.has(listing._id)}
+                    title={listingsWithActiveOrders.has(listing._id) ? 'Cannot edit: Listing has active or pending orders' : listing.status === 'disabled_by_admin' ? 'Cannot edit: Listing disabled by admin' : 'Edit listing'}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#3b82f6',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      cursor: (pausingListing === listing._id || listing.status === 'disabled_by_admin' || listingsWithActiveOrders.has(listing._id)) ? 'not-allowed' : 'pointer',
+                      opacity: (pausingListing === listing._id || listing.status === 'disabled_by_admin' || listingsWithActiveOrders.has(listing._id)) ? 0.6 : 1,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                      position: 'relative'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (pausingListing !== listing._id && listing.status !== 'disabled_by_admin' && !listingsWithActiveOrders.has(listing._id)) {
+                        e.target.style.backgroundColor = '#2563eb';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (pausingListing !== listing._id && listing.status !== 'disabled_by_admin' && !listingsWithActiveOrders.has(listing._id)) {
+                        e.target.style.backgroundColor = '#3b82f6';
+                      }
+                    }}
+                  >
+                    Edit
+                  </button>
+                  {(listing.status === 'active' || listing.status === 'paused') && listing.status !== 'disabled_by_admin' && (
+                    <button
+                      onClick={() => handlePauseResume(listing)}
+                      disabled={pausingListing === listing._id || listingsWithActiveOrders.has(listing._id)}
+                      title={listingsWithActiveOrders.has(listing._id) ? 'Cannot pause/resume: Listing has active or pending orders' : listing.status === 'paused' ? 'Resume listing' : 'Pause listing'}
+                      style={{
+                        padding: '8px 16px',
+                        backgroundColor: listing.status === 'paused' ? '#10b981' : '#f59e0b',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        cursor: (pausingListing === listing._id || listingsWithActiveOrders.has(listing._id)) ? 'not-allowed' : 'pointer',
+                        opacity: (pausingListing === listing._id || listingsWithActiveOrders.has(listing._id)) ? 0.6 : 1,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (pausingListing !== listing._id && !listingsWithActiveOrders.has(listing._id)) {
+                          e.target.style.backgroundColor = listing.status === 'paused' ? '#059669' : '#d97706';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (pausingListing !== listing._id && !listingsWithActiveOrders.has(listing._id)) {
+                          e.target.style.backgroundColor = listing.status === 'paused' ? '#10b981' : '#f59e0b';
+                        }
+                      }}
+                    >
+                      {pausingListing === listing._id ? (
+                        <>
+                          <LoadingSpinner size="12px" color="#ffffff" />
+                          {listing.status === 'paused' ? 'Resuming...' : 'Pausing...'}
+                        </>
+                      ) : (
+                        listing.status === 'paused' ? 'Resume' : 'Pause'
+                      )}
+                    </button>
+                  )}
+                  {listing.status !== 'disabled_by_admin' && (
+                    <button
+                      onClick={() => handleDeleteClick(listing)}
+                      disabled={deletingListing === listing._id || listingsWithActiveOrders.has(listing._id)}
+                      title={listingsWithActiveOrders.has(listing._id) ? 'Cannot delete: Listing has active or pending orders' : 'Delete listing'}
+                      style={{
+                        padding: '8px 16px',
+                        backgroundColor: '#ef4444',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        cursor: (deletingListing === listing._id || listingsWithActiveOrders.has(listing._id)) ? 'not-allowed' : 'pointer',
+                        opacity: (deletingListing === listing._id || listingsWithActiveOrders.has(listing._id)) ? 0.6 : 1,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (deletingListing !== listing._id && !listingsWithActiveOrders.has(listing._id)) {
+                          e.target.style.backgroundColor = '#dc2626';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (deletingListing !== listing._id && !listingsWithActiveOrders.has(listing._id)) {
+                          e.target.style.backgroundColor = '#ef4444';
+                        }
+                      }}
+                    >
+                      {deletingListing === listing._id ? (
+                        <>
+                          <LoadingSpinner size="12px" color="#ffffff" />
+                          Deleting...
+                        </>
+                      ) : (
+                        'Delete'
+                      )}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Edit Listing Modal */}
+      {editingListing && (
+        <EditListingModal
+          listing={editingListing}
+          isOpen={!!editingListing}
+          onClose={() => {
+            setEditingListing(null);
+            setActionError(null);
+          }}
+          onSuccess={handleEditSuccess}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.75)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }} onClick={() => setShowDeleteConfirm(null)}>
+          <div style={{
+            backgroundColor: '#1e2338',
+            border: '1px solid #2d3447',
+            borderRadius: '16px',
+            padding: '32px',
+            maxWidth: '480px',
+            width: '100%',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)'
+          }} onClick={(e) => e.stopPropagation()}>
+            <h2 style={{
+              color: '#ffffff',
+              fontSize: '24px',
+              fontWeight: '700',
+              marginBottom: '16px'
+            }}>
+              Delete Listing?
+            </h2>
+            <p style={{
+              color: '#b8bcc8',
+              fontSize: '14px',
+              marginBottom: '24px',
+              lineHeight: '1.6'
+            }}>
+              Are you sure you want to delete <strong style={{ color: '#ffffff' }}>{showDeleteConfirm.title}</strong>? This action cannot be undone.
+            </p>
+            {listingsWithActiveOrders.has(showDeleteConfirm._id) && (
+              <div style={{
+                padding: '12px 16px',
+                backgroundColor: '#f59e0b',
+                border: '1px solid #d97706',
+                borderRadius: '8px',
+                color: '#ffffff',
+                fontSize: '13px',
+                marginBottom: '24px'
+              }}>
+                ⚠️ This listing has active orders and cannot be deleted.
+              </div>
+            )}
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'flex-end'
+            }}>
+              <button
+                onClick={() => setShowDeleteConfirm(null)}
+                style={{
+                  padding: '12px 24px',
+                  backgroundColor: 'transparent',
+                  color: '#b8bcc8',
+                  border: '1px solid #2d3447',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.backgroundColor = '#2d3447';
+                  e.target.style.color = '#ffffff';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.backgroundColor = 'transparent';
+                  e.target.style.color = '#b8bcc8';
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                disabled={deletingListing === showDeleteConfirm._id || listingsWithActiveOrders.has(showDeleteConfirm._id)}
+                style={{
+                  padding: '12px 24px',
+                  backgroundColor: '#ef4444',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: (deletingListing === showDeleteConfirm._id || listingsWithActiveOrders.has(showDeleteConfirm._id)) ? 'not-allowed' : 'pointer',
+                  opacity: (deletingListing === showDeleteConfirm._id || listingsWithActiveOrders.has(showDeleteConfirm._id)) ? 0.6 : 1,
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+                onMouseEnter={(e) => {
+                  if (deletingListing !== showDeleteConfirm._id && !listingsWithActiveOrders.has(showDeleteConfirm._id)) {
+                    e.target.style.backgroundColor = '#dc2626';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (deletingListing !== showDeleteConfirm._id && !listingsWithActiveOrders.has(showDeleteConfirm._id)) {
+                    e.target.style.backgroundColor = '#ef4444';
+                  }
+                }}
+              >
+                {deletingListing === showDeleteConfirm._id ? (
+                  <>
+                    <LoadingSpinner size="14px" color="#ffffff" />
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete Listing'
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
