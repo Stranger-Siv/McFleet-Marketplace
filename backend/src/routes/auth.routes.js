@@ -1245,7 +1245,7 @@ router.get('/users', protect, authorizeRoles('admin'), async (req, res) => {
 
     const [users, total] = await Promise.all([
       User.find(query)
-        .select('_id discordUsername role banned createdAt')
+        .select('_id discordUsername discordId role banned createdAt')
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limitNum),
@@ -2134,6 +2134,162 @@ router.post('/users/:userId/unban', protect, authorizeRoles('admin'), async (req
       message: 'User unbanned'
     });
   } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get user details for admin inspection
+router.get('/users/:userId/inspect', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId).select('_id discordUsername discordId role banned createdAt totalDeals totalRatings averageRating');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Get user's listings (if seller)
+    const listings = user.role === 'seller' 
+      ? await ItemListing.find({ seller: userId })
+          .select('_id title itemName category price stock status createdAt')
+          .sort({ createdAt: -1 })
+      : [];
+
+    // Get user's orders (as buyer)
+    const buyerOrders = await Order.find({ buyer: userId })
+      .populate('listing', 'title itemName')
+      .populate('seller', 'discordUsername')
+      .select('_id status quantity totalPrice createdAt')
+      .sort({ createdAt: -1 })
+      .limit(50);
+
+    // Get user's orders (as seller)
+    const sellerOrders = user.role === 'seller'
+      ? await Order.find({ seller: userId })
+          .populate('listing', 'title itemName')
+          .populate('buyer', 'discordUsername')
+          .select('_id status quantity totalPrice createdAt')
+          .sort({ createdAt: -1 })
+          .limit(50)
+      : [];
+
+    // Get seller request status
+    const sellerRequest = await SellerRequest.findOne({ user: userId })
+      .sort({ createdAt: -1 });
+
+    // Count active listings
+    const activeListingsCount = listings.filter(l => l.status === 'active' || l.status === 'paused').length;
+    
+    // Count active orders (as buyer)
+    const activeBuyerOrders = buyerOrders.filter(o => 
+      ['pending_payment', 'paid', 'item_collected', 'item_delivered', 'disputed'].includes(o.status)
+    ).length;
+
+    // Count active orders (as seller)
+    const activeSellerOrders = sellerOrders.filter(o => 
+      ['pending_payment', 'paid', 'item_collected', 'item_delivered', 'disputed'].includes(o.status)
+    ).length;
+
+    res.json({
+      success: true,
+      user: user.toObject(),
+      listings,
+      buyerOrders,
+      sellerOrders,
+      sellerRequest: sellerRequest ? {
+        status: sellerRequest.status,
+        createdAt: sellerRequest.createdAt,
+        updatedAt: sellerRequest.updatedAt
+      } : null,
+      stats: {
+        totalListings: listings.length,
+        activeListings: activeListingsCount,
+        totalBuyerOrders: buyerOrders.length,
+        activeBuyerOrders,
+        totalSellerOrders: sellerOrders.length,
+        activeSellerOrders
+      }
+    });
+  } catch (error) {
+    console.error('User inspection error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Change user role (buyer ↔ seller)
+router.put('/users/:userId/role', protect, authorizeRoles('admin'), async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { role } = req.body;
+
+    if (!role || !['user', 'seller'].includes(role)) {
+      return res.status(400).json({ message: 'Role must be either "user" or "seller"' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Prevent changing admin role
+    if (user.role === 'admin') {
+      return res.status(400).json({ message: 'Cannot change admin role' });
+    }
+
+    const oldRole = user.role;
+    const newRole = role;
+
+    // Check for active listings if demoting from seller
+    if (oldRole === 'seller' && newRole === 'user') {
+      const activeListings = await ItemListing.find({
+        seller: userId,
+        status: { $in: ['active', 'paused'] }
+      });
+      
+      if (activeListings.length > 0) {
+        return res.status(400).json({
+          message: `Cannot demote seller: User has ${activeListings.length} active/paused listing(s). Please pause or delete them first.`,
+          activeListingsCount: activeListings.length
+        });
+      }
+
+      // Check for active orders
+      const activeOrders = await Order.find({
+        seller: userId,
+        status: { $in: ['pending_payment', 'paid', 'item_collected', 'item_delivered', 'disputed'] }
+      });
+
+      if (activeOrders.length > 0) {
+        return res.status(400).json({
+          message: `Cannot demote seller: User has ${activeOrders.length} active order(s). Please wait for orders to complete.`,
+          activeOrdersCount: activeOrders.length
+        });
+      }
+    }
+
+    user.role = newRole;
+    await user.save();
+
+    // Log admin action
+    await logAdminAction({
+      adminId: req.user.userId,
+      action: 'CHANGE_USER_ROLE',
+      targetType: 'user',
+      targetId: userId,
+      note: `Changed role from ${oldRole} to ${newRole} for user: ${user.discordUsername}`
+    });
+
+    res.json({
+      success: true,
+      message: `User role changed from ${oldRole} to ${newRole} successfully`,
+      user: {
+        _id: user._id,
+        discordUsername: user.discordUsername,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    console.error('Role change error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

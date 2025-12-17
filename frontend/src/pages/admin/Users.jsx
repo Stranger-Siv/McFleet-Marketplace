@@ -3,6 +3,7 @@ import apiClient from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import { usePolling } from '../../hooks/usePolling';
 import ConfirmationModal from '../../components/ConfirmationModal';
+import UserInspector from '../../components/UserInspector';
 
 function Users() {
   const { user: currentUser } = useAuth();
@@ -13,6 +14,7 @@ function Users() {
   const [actionMessage, setActionMessage] = useState(null);
   const [actionError, setActionError] = useState(null);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, action: null, userId: null, username: null });
+  const [inspectingUserId, setInspectingUserId] = useState(null);
 
   const fetchUsers = async () => {
     try {
@@ -227,7 +229,8 @@ function Users() {
     borderCollapse: 'collapse',
     backgroundColor: '#2f3136',
     borderRadius: '8px',
-    overflow: 'hidden'
+    overflow: 'hidden',
+    tableLayout: 'fixed'
   };
 
   const thStyle = {
@@ -245,7 +248,10 @@ function Users() {
     borderBottom: '1px solid #40444b',
     color: '#dcddde',
     fontSize: '14px',
-    transition: 'background-color 0.2s ease'
+    transition: 'background-color 0.2s ease',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap'
   };
 
   const statusBadgeStyle = (banned) => ({
@@ -316,6 +322,12 @@ function Users() {
     color: '#ffffff'
   };
 
+  const viewUserButtonStyle = {
+    ...buttonStyle,
+    backgroundColor: '#5865f2',
+    color: '#ffffff'
+  };
+
   const disabledButtonStyle = {
     opacity: 0.5,
     cursor: 'not-allowed'
@@ -378,10 +390,12 @@ function Users() {
           <table style={tableStyle}>
             <thead>
               <tr>
-                <th style={thStyle}>Username</th>
-                <th style={thStyle}>Role</th>
-                <th style={thStyle}>Status</th>
-                <th style={thStyle}>Actions</th>
+                <th style={{ ...thStyle, width: '15%' }}>Username</th>
+                <th style={{ ...thStyle, width: '20%' }}>User ID</th>
+                <th style={{ ...thStyle, width: '10%' }}>Role</th>
+                <th style={{ ...thStyle, width: '10%' }}>Status</th>
+                <th style={{ ...thStyle, width: '12%' }}>Registered</th>
+                <th style={{ ...thStyle, width: '33%' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -399,28 +413,64 @@ function Users() {
                       e.currentTarget.style.backgroundColor = 'transparent';
                     }}
                   >
-                    <td style={tdStyle}>
-                      <span style={{ color: '#ffffff', fontWeight: '500' }}>
-                        {user.discordUsername || 'Unknown'}
-                      </span>
-                      {isCurrentUser && (
-                        <span style={{ marginLeft: '8px', fontSize: '12px', color: '#72767d' }}>
-                          (You)
+                    <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
+                      <div style={{ 
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        maxWidth: '100%'
+                      }}>
+                        <span style={{ color: '#ffffff', fontWeight: '500' }}>
+                          {user.discordUsername || 'Unknown'}
                         </span>
-                      )}
+                        {isCurrentUser && (
+                          <span style={{ marginLeft: '8px', fontSize: '12px', color: '#72767d' }}>
+                            (You)
+                          </span>
+                        )}
+                      </div>
                     </td>
-                    <td style={tdStyle}>
+                    <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
+                      <div style={{ 
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        maxWidth: '100%',
+                        fontFamily: 'monospace'
+                      }} title={user._id}>
+                        <span style={{ 
+                          color: '#b8bcc8', 
+                          fontSize: '11px'
+                        }}>
+                          {user._id}
+                        </span>
+                      </div>
+                    </td>
+                    <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
                       <span style={roleBadgeStyle(user.role)}>
                         {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
                       </span>
                     </td>
-                    <td style={tdStyle}>
+                    <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
                       <span style={statusBadgeStyle(user.banned)}>
                         {user.banned ? 'Banned' : 'Active'}
                       </span>
                     </td>
-                    <td style={tdStyle}>
+                    <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
+                      <span style={{ color: '#b8bcc8', fontSize: '13px' }}>
+                        {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+                      </span>
+                    </td>
+                    <td style={{ ...tdStyle, whiteSpace: 'normal', overflow: 'visible' }}>
                       <div style={buttonGroupStyle}>
+                        <button
+                          onClick={() => setInspectingUserId(user._id)}
+                          style={viewUserButtonStyle}
+                          onMouseEnter={(e) => e.target.style.backgroundColor = '#4752c4'}
+                          onMouseLeave={(e) => e.target.style.backgroundColor = '#5865f2'}
+                        >
+                          View as User
+                        </button>
                         {user.banned ? (
                           <button
                             onClick={() => handleUnbanClick(user._id, user.discordUsername)}
@@ -507,6 +557,16 @@ function Users() {
         confirmText={confirmModal.action === 'ban' ? 'Ban User' : 'Unban User'}
         isDestructive={confirmModal.action === 'ban'}
         isLoading={confirmModal.userId && actionLoading[confirmModal.userId]}
+      />
+
+      {/* User Inspector Modal */}
+      <UserInspector
+        userId={inspectingUserId}
+        isOpen={!!inspectingUserId}
+        onClose={() => setInspectingUserId(null)}
+        onRoleChange={() => {
+          fetchUsers();
+        }}
       />
     </div>
   );

@@ -14,7 +14,7 @@ function BuyerLayout() {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/');
   };
 
   // Update URL params when search query changes (debounced)

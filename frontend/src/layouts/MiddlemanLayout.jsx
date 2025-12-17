@@ -12,7 +12,7 @@ function MiddlemanLayout() {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/');
   };
 
   const navStyle = {

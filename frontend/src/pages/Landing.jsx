@@ -1,8 +1,6 @@
 import { useResponsive } from '../hooks/useResponsive';
-import { useNavigate } from 'react-router-dom';
 
 function Landing() {
-  const navigate = useNavigate();
   const { isMobile, isTablet, isDesktop } = useResponsive();
 
   const handleDiscordLogin = () => {
@@ -27,7 +25,7 @@ function Landing() {
   };
 
   const sectionStyle = {
-    padding: isMobile ? '48px 20px' : isTablet ? '64px 32px' : '80px 48px',
+    padding: isMobile ? '32px 20px' : isTablet ? '40px 32px' : '48px 48px',
     maxWidth: '1200px',
     margin: '0 auto'
   };
@@ -35,8 +33,8 @@ function Landing() {
   const heroStyle = {
     ...sectionStyle,
     textAlign: 'center',
-    paddingTop: isMobile ? '80px' : '120px',
-    paddingBottom: isMobile ? '60px' : '100px'
+    paddingTop: isMobile ? '60px' : '80px',
+    paddingBottom: isMobile ? '40px' : '60px'
   };
 
   const logoStyle = {
@@ -123,7 +121,7 @@ function Landing() {
     maxWidth: '600px',
     marginLeft: 'auto',
     marginRight: 'auto',
-    marginBottom: isMobile ? '32px' : '48px'
+    marginBottom: isMobile ? '20px' : '24px'
   };
 
   const cardGridStyle = {
@@ -216,15 +214,15 @@ function Landing() {
     backgroundColor: '#1a1f35',
     border: '1px solid #2d3447',
     borderRadius: '16px',
-    padding: isMobile ? '24px' : '32px',
-    marginBottom: '16px'
+    padding: isMobile ? '20px' : '24px',
+    marginBottom: '12px'
   };
 
   const footerStyle = {
     backgroundColor: '#0a0e27',
     borderTop: '1px solid #2d3447',
     padding: isMobile ? '32px 20px' : '48px',
-    marginTop: '80px'
+    marginTop: '48px'
   };
 
   const footerContentStyle = {
@@ -248,20 +246,431 @@ function Landing() {
   return (
     <div style={containerStyle}>
       {/* Hero Section */}
-      <section style={heroStyle}>
+      <section id="hero" style={heroStyle}>
         <div style={logoStyle}>M</div>
-        <h1 style={heroTitleStyle}>Safe Minecraft Item Trading</h1>
+        <h1 style={heroTitleStyle}>McFleet Shop</h1>
         <p style={heroSubtitleStyle}>
-          Trade Minecraft items with complete protection. Our middleman system ensures secure transactions,
-          no scams, and trusted trades every time.
+          A trusted middleman marketplace for Minecraft IRL trades. Every transaction is protected by verified middlemen and manual admin oversight.
         </p>
-        <div style={buttonGroupStyle}>
+        <div style={{
+          marginTop: '32px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '12px'
+        }}>
+          <p style={{
+            color: '#b8bcc8',
+            fontSize: isMobile ? '14px' : '16px',
+            marginBottom: '8px'
+          }}>
+            Scroll down to learn more and login
+          </p>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <svg
+              width="28"
+              height="28"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#fbbf24"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{
+                animation: 'scrollBounce 2s ease-in-out infinite',
+                cursor: 'pointer'
+              }}
+              onClick={() => {
+                const loginSection = document.querySelector('[data-section="login"]');
+                if (loginSection) {
+                  loginSection.scrollIntoView({ behavior: 'smooth' });
+                } else {
+                  window.scrollTo({ top: window.innerHeight, behavior: 'smooth' });
+                }
+              }}
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </div>
+        </div>
+        <style>{`
+          @keyframes scrollBounce {
+            0%, 100% {
+              transform: translateY(0);
+              opacity: 0.8;
+            }
+            50% {
+              transform: translateY(8px);
+              opacity: 1;
+            }
+          }
+        `}</style>
+      </section>
+
+      {/* What is McFleet Shop */}
+      <section id="what-is-mcfleet" style={sectionStyle}>
+        <h2 style={sectionTitleStyle}>What is McFleet Shop?</h2>
+        <div style={{
+          maxWidth: '800px',
+          margin: '0 auto',
+          marginTop: '24px'
+        }}>
+          <div style={trustCardStyle}>
+            <p style={{ ...featureDescStyle, fontSize: '16px', lineHeight: '1.8', color: '#dcddde' }}>
+              McFleet Shop is a <strong style={{ color: '#fbbf24' }}>middleman-controlled marketplace</strong> for trading Minecraft items safely.
+              We act as a neutral platform that connects buyers and sellers, but we <strong style={{ color: '#fbbf24' }}>do not own or operate any Minecraft servers</strong>.
+            </p>
+            <p style={{ ...featureDescStyle, fontSize: '16px', lineHeight: '1.8', color: '#dcddde', marginTop: '16px' }}>
+              Every trade is supervised by a verified middleman who ensures payment is secure and items are delivered correctly.
+              Our admin team manually reviews all listings, approves sellers, and resolves disputes to maintain platform safety.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* How Trades Are Protected */}
+      <section id="how-protected" style={{ ...sectionStyle, backgroundColor: '#131829' }}>
+        <h2 style={sectionTitleStyle}>How Your Trades Are Protected</h2>
+        <div style={{
+          maxWidth: '900px',
+          margin: '0 auto',
+          marginTop: '24px'
+        }}>
+          <div style={trustCardStyle}>
+            <h3 style={{ ...featureTitleStyle, textAlign: 'left', marginBottom: '12px', color: '#fbbf24' }}>
+              🛡️ Middleman-Controlled Escrow
+            </h3>
+            <p style={{ ...featureDescStyle, fontSize: '15px', lineHeight: '1.7' }}>
+              When you place an order, your payment is held securely by the platform until the middleman verifies that the item has been delivered.
+              Sellers only receive payment after the buyer confirms receipt. This escrow system prevents scams and ensures both parties are protected.
+            </p>
+          </div>
+
+          <div style={trustCardStyle}>
+            <h3 style={{ ...featureTitleStyle, textAlign: 'left', marginBottom: '12px', color: '#fbbf24' }}>
+              👮 Manual Admin Moderation
+            </h3>
+            <p style={{ ...featureDescStyle, fontSize: '15px', lineHeight: '1.7' }}>
+              Every seller must be approved by our admin team before they can list items. All listings are reviewed for accuracy.
+              Disputes are handled manually by admins who review evidence and make fair decisions. This human oversight ensures quality and safety.
+            </p>
+          </div>
+
+          <div style={trustCardStyle}>
+            <h3 style={{ ...featureTitleStyle, textAlign: 'left', marginBottom: '12px', color: '#fbbf24' }}>
+              📝 Complete Trade Logging
+            </h3>
+            <p style={{ ...featureDescStyle, fontSize: '15px', lineHeight: '1.7' }}>
+              Every order, payment, and delivery is logged on the platform. If something goes wrong, admins can review the complete history
+              to resolve disputes fairly. Nothing happens in secret—everything is transparent and traceable.
+            </p>
+          </div>
+
+          <div style={trustCardStyle}>
+            <h3 style={{ ...featureTitleStyle, textAlign: 'left', marginBottom: '12px', color: '#fbbf24' }}>
+              🔒 No Direct Contact Required
+            </h3>
+            <p style={{ ...featureDescStyle, fontSize: '15px', lineHeight: '1.7' }}>
+              Buyers and sellers never need to share personal information or payment details with each other.
+              All communication happens through the middleman, keeping your private information safe.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Why Discord is Required */}
+      <section id="why-discord" style={sectionStyle}>
+        <h2 style={sectionTitleStyle}>Why We Use Discord Login</h2>
+        <div style={{
+          maxWidth: '800px',
+          margin: '0 auto',
+          marginTop: '24px'
+        }}>
+          <div style={trustCardStyle}>
+            <h3 style={{ ...featureTitleStyle, textAlign: 'left', marginBottom: '16px', color: '#ffffff' }}>
+              Simple Explanation
+            </h3>
+            <p style={{ ...featureDescStyle, fontSize: '15px', lineHeight: '1.8', marginBottom: '20px' }}>
+              We use Discord login because it's the easiest way to verify who you are and coordinate trades.
+              When you trade on McFleet Shop, the middleman needs to contact you on Discord to give you instructions and verify delivery.
+              Using Discord login means you're already set up for this communication.
+            </p>
+            <p style={{ ...featureDescStyle, fontSize: '15px', lineHeight: '1.8', marginBottom: '20px' }}>
+              <strong style={{ color: '#fbbf24' }}>We only access basic information:</strong> your Discord username and user ID.
+              This is the minimum needed to identify you and coordinate trades.
+            </p>
+          </div>
+
+          <div style={{
+            ...trustCardStyle,
+            backgroundColor: '#1a1f35',
+            border: '2px solid #f59e0b'
+          }}>
+            <h3 style={{ ...featureTitleStyle, textAlign: 'left', marginBottom: '16px', color: '#fbbf24' }}>
+              What We Do NOT Access
+            </h3>
+            <ul style={{
+              margin: 0,
+              paddingLeft: '24px',
+              color: '#dcddde',
+              lineHeight: '2',
+              fontSize: '15px'
+            }}>
+              <li>❌ Your Discord password (we never see it)</li>
+              <li>❌ Your email address</li>
+              <li>❌ Your Discord messages or DMs</li>
+              <li>❌ Your Discord servers or channels</li>
+              <li>❌ Your friends list</li>
+              <li>❌ Any payment or financial information</li>
+              <li>❌ Your personal files or data</li>
+            </ul>
+            <p style={{ ...featureDescStyle, fontSize: '14px', lineHeight: '1.7', marginTop: '16px', color: '#b8bcc8' }}>
+              We only use Discord to verify your identity and enable the middleman to contact you during trades.
+              That's it. You remain in full control of your Discord account.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* How Trading Works */}
+      <section id="how-it-works" style={{ ...sectionStyle, backgroundColor: '#131829' }}>
+        <h2 style={sectionTitleStyle}>How Trading Works</h2>
+        <p style={sectionSubtitleStyle}>
+          A simple, secure process that protects both buyers and sellers.
+        </p>
+        <div style={{
+          maxWidth: '900px',
+          margin: '0 auto',
+          marginTop: '24px'
+        }}>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px'
+          }}>
+            <div style={{
+              ...trustCardStyle,
+              display: 'flex',
+              gap: '20px',
+              alignItems: 'flex-start'
+            }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                minWidth: '40px',
+                backgroundColor: '#fbbf24',
+                color: '#0a0e27',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: '700',
+                fontSize: '18px'
+              }}>1</div>
+              <div>
+                <h3 style={{ ...featureTitleStyle, textAlign: 'left', marginBottom: '8px' }}>Buyer Places Order</h3>
+                <p style={{ ...featureDescStyle, fontSize: '15px', lineHeight: '1.7' }}>
+                  You browse listings and place an order. Payment is held securely by the platform—not sent to the seller yet.
+                </p>
+              </div>
+            </div>
+
+            <div style={{
+              ...trustCardStyle,
+              display: 'flex',
+              gap: '20px',
+              alignItems: 'flex-start'
+            }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                minWidth: '40px',
+                backgroundColor: '#fbbf24',
+                color: '#0a0e27',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: '700',
+                fontSize: '18px'
+              }}>2</div>
+              <div>
+                <h3 style={{ ...featureTitleStyle, textAlign: 'left', marginBottom: '8px' }}>Middleman Coordinates</h3>
+                <p style={{ ...featureDescStyle, fontSize: '15px', lineHeight: '1.7' }}>
+                  A verified middleman contacts both buyer and seller on Discord with clear instructions.
+                  They verify identities and coordinate the trade.
+                </p>
+              </div>
+            </div>
+
+            <div style={{
+              ...trustCardStyle,
+              display: 'flex',
+              gap: '20px',
+              alignItems: 'flex-start'
+            }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                minWidth: '40px',
+                backgroundColor: '#fbbf24',
+                color: '#0a0e27',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: '700',
+                fontSize: '18px'
+              }}>3</div>
+              <div>
+                <h3 style={{ ...featureTitleStyle, textAlign: 'left', marginBottom: '8px' }}>Seller Delivers Item</h3>
+                <p style={{ ...featureDescStyle, fontSize: '15px', lineHeight: '1.7' }}>
+                  The seller delivers the item in-game following the middleman's instructions.
+                  The middleman verifies the delivery.
+                </p>
+              </div>
+            </div>
+
+            <div style={{
+              ...trustCardStyle,
+              display: 'flex',
+              gap: '20px',
+              alignItems: 'flex-start'
+            }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                minWidth: '40px',
+                backgroundColor: '#fbbf24',
+                color: '#0a0e27',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: '700',
+                fontSize: '18px'
+              }}>4</div>
+              <div>
+                <h3 style={{ ...featureTitleStyle, textAlign: 'left', marginBottom: '8px' }}>Buyer Confirms Receipt</h3>
+                <p style={{ ...featureDescStyle, fontSize: '15px', lineHeight: '1.7' }}>
+                  You confirm that you received the item correctly. This confirmation is required before payment is released.
+                </p>
+              </div>
+            </div>
+
+            <div style={{
+              ...trustCardStyle,
+              display: 'flex',
+              gap: '20px',
+              alignItems: 'flex-start'
+            }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                minWidth: '40px',
+                backgroundColor: '#fbbf24',
+                color: '#0a0e27',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: '700',
+                fontSize: '18px'
+              }}>5</div>
+              <div>
+                <h3 style={{ ...featureTitleStyle, textAlign: 'left', marginBottom: '8px' }}>Payment Released</h3>
+                <p style={{ ...featureDescStyle, fontSize: '15px', lineHeight: '1.7' }}>
+                  Once everything is verified, the middleman releases payment to the seller (minus platform commission).
+                  The trade is complete and logged.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Safety Assurances */}
+      <section id="safety" style={sectionStyle}>
+        <h2 style={sectionTitleStyle}>Your Safety is Our Priority</h2>
+        <div style={{
+          maxWidth: '800px',
+          margin: '0 auto',
+          marginTop: '24px'
+        }}>
+          <div style={trustCardStyle}>
+            <h3 style={{ ...featureTitleStyle, textAlign: 'left', marginBottom: '12px', color: '#10b981' }}>
+              ✅ Verified Middlemen
+            </h3>
+            <p style={{ ...featureDescStyle, fontSize: '15px', lineHeight: '1.7' }}>
+              All middlemen are verified by our admin team. They follow strict protocols and are trained to handle trades safely.
+            </p>
+          </div>
+
+          <div style={trustCardStyle}>
+            <h3 style={{ ...featureTitleStyle, textAlign: 'left', marginBottom: '12px', color: '#10b981' }}>
+              ✅ Approved Sellers Only
+            </h3>
+            <p style={{ ...featureDescStyle, fontSize: '15px', lineHeight: '1.7' }}>
+              Sellers must apply and be approved by admins before listing items. We review each application to ensure quality and trustworthiness.
+            </p>
+          </div>
+
+          <div style={trustCardStyle}>
+            <h3 style={{ ...featureTitleStyle, textAlign: 'left', marginBottom: '12px', color: '#10b981' }}>
+              ✅ Active Dispute Resolution
+            </h3>
+            <p style={{ ...featureDescStyle, fontSize: '15px', lineHeight: '1.7' }}>
+              If something goes wrong, you can raise a dispute. Admins review all disputes manually and make fair decisions based on evidence.
+            </p>
+          </div>
+
+          <div style={trustCardStyle}>
+            <h3 style={{ ...featureTitleStyle, textAlign: 'left', marginBottom: '12px', color: '#10b981' }}>
+              ✅ Zero-Tolerance for Scams
+            </h3>
+            <p style={{ ...featureDescStyle, fontSize: '15px', lineHeight: '1.7' }}>
+              Scammers are permanently banned immediately. We maintain strict rules and actively monitor the platform to prevent fraud.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Discord Login CTA */}
+      <section data-section="login" style={{ ...sectionStyle, backgroundColor: '#131829', textAlign: 'center' }}>
+        <h2 style={{ ...sectionTitleStyle, marginBottom: '12px' }}>Ready to Trade Safely?</h2>
+        <p style={{ ...sectionSubtitleStyle, marginBottom: '20px', maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto' }}>
+          Now that you understand how we protect your trades, you can proceed with confidence.
+          Click below to login with Discord and start trading.
+        </p>
+        <div style={{
+          maxWidth: '600px',
+          margin: '0 auto',
+          padding: '20px',
+          backgroundColor: '#1e2338',
+          borderRadius: '12px',
+          border: '1px solid #2d3447',
+          marginBottom: '0'
+        }}>
+          <p style={{ color: '#b8bcc8', fontSize: '14px', lineHeight: '1.7', marginBottom: '16px' }}>
+            <strong style={{ color: '#ffffff' }}>Remember:</strong> We only access your Discord username and user ID.
+            We never see your password, messages, servers, or any other personal information.
+          </p>
           <button
             onClick={handleDiscordLogin}
-            style={primaryButtonStyle}
+            style={{
+              ...primaryButtonStyle,
+              fontSize: isMobile ? '16px' : '18px',
+              padding: isMobile ? '16px 32px' : '18px 40px',
+              width: '100%'
+            }}
             onMouseEnter={(e) => {
               e.target.style.backgroundColor = '#f59e0b';
-              e.target.style.transform = 'scale(1.05)';
+              e.target.style.transform = 'scale(1.02)';
               e.target.style.boxShadow = '0 6px 20px rgba(251, 191, 36, 0.4)';
             }}
             onMouseLeave={(e) => {
@@ -272,200 +681,12 @@ function Landing() {
           >
             Login with Discord
           </button>
-          <button
-            onClick={handleHowItWorks}
-            style={secondaryButtonStyle}
-            onMouseEnter={(e) => {
-              e.target.style.borderColor = '#fbbf24';
-              e.target.style.color = '#fbbf24';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.borderColor = '#2d3447';
-              e.target.style.color = '#ffffff';
-            }}
-          >
-            How It Works
-          </button>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section style={sectionStyle}>
-        <h2 style={sectionTitleStyle}>Why Choose mcfleet.shop?</h2>
-        <p style={sectionSubtitleStyle}>
-          Built for safety, designed for trust. Every trade is protected by our comprehensive security system.
-        </p>
-        <div style={cardGridStyle}>
-          <div
-            style={featureCardStyle}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.5)';
-              e.currentTarget.style.borderColor = '#fbbf24';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.4)';
-              e.currentTarget.style.borderColor = '#2d3447';
-            }}
-          >
-            <div style={featureIconStyle}>🛡️</div>
-            <h3 style={featureTitleStyle}>Middleman Protection</h3>
-            <p style={featureDescStyle}>
-              Every trade goes through a verified middleman who ensures safe delivery and payment.
-            </p>
-          </div>
-
-          <div
-            style={featureCardStyle}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.5)';
-              e.currentTarget.style.borderColor = '#fbbf24';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.4)';
-              e.currentTarget.style.borderColor = '#2d3447';
-            }}
-          >
-            <div style={featureIconStyle}>🔒</div>
-            <h3 style={featureTitleStyle}>No Direct Contact</h3>
-            <p style={featureDescStyle}>
-              Buyers and sellers never share personal details. All communication happens through the middleman.
-            </p>
-          </div>
-
-          <div
-            style={featureCardStyle}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.5)';
-              e.currentTarget.style.borderColor = '#fbbf24';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.4)';
-              e.currentTarget.style.borderColor = '#2d3447';
-            }}
-          >
-            <div style={featureIconStyle}>⚖️</div>
-            <h3 style={featureTitleStyle}>Dispute Resolution</h3>
-            <p style={featureDescStyle}>
-              Fair dispute system with admin oversight. Problems are resolved quickly and fairly.
-            </p>
-          </div>
-
-          <div
-            style={featureCardStyle}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.5)';
-              e.currentTarget.style.borderColor = '#fbbf24';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.4)';
-              e.currentTarget.style.borderColor = '#2d3447';
-            }}
-          >
-            <div style={featureIconStyle}>⭐</div>
-            <h3 style={featureTitleStyle}>Trusted Sellers</h3>
-            <p style={featureDescStyle}>
-              All sellers are verified. Only approved sellers can list items for sale.
-            </p>
-          </div>
-
-          <div
-            style={featureCardStyle}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.5)';
-              e.currentTarget.style.borderColor = '#fbbf24';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.4)';
-              e.currentTarget.style.borderColor = '#2d3447';
-            }}
-          >
-            <div style={featureIconStyle}>⚡</div>
-            <h3 style={featureTitleStyle}>Fast Delivery</h3>
-            <p style={featureDescStyle}>
-              Streamlined process ensures quick item delivery once payment is confirmed.
-            </p>
-          </div>
-
-          <div
-            style={featureCardStyle}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-4px)';
-              e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.5)';
-              e.currentTarget.style.borderColor = '#fbbf24';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.4)';
-              e.currentTarget.style.borderColor = '#2d3447';
-            }}
-          >
-            <div style={featureIconStyle}>👮</div>
-            <h3 style={featureTitleStyle}>Admin Moderation</h3>
-            <p style={featureDescStyle}>
-              Active admin team monitors all trades and listings to ensure platform safety.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works Section */}
-      <section id="how-it-works" style={{ ...sectionStyle, backgroundColor: '#131829' }}>
-        <h2 style={sectionTitleStyle}>How It Works</h2>
-        <p style={sectionSubtitleStyle}>
-          Simple, secure, and safe. Follow these steps to trade with confidence.
-        </p>
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : isTablet ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
-          gap: isMobile ? '24px' : '32px',
-          marginTop: isMobile ? '32px' : '48px'
-        }}>
-          <div style={stepCardStyle}>
-            <div style={stepNumberStyle}>1</div>
-            <h3 style={featureTitleStyle}>Login with Discord</h3>
-            <p style={featureDescStyle}>
-              Quick and secure authentication using your Discord account. No passwords to remember.
-            </p>
-          </div>
-
-          <div style={stepCardStyle}>
-            <div style={stepNumberStyle}>2</div>
-            <h3 style={featureTitleStyle}>Choose Item</h3>
-            <p style={featureDescStyle}>
-              Browse the marketplace and select the item you want to buy. View seller details and pricing.
-            </p>
-          </div>
-
-          <div style={stepCardStyle}>
-            <div style={stepNumberStyle}>3</div>
-            <h3 style={featureTitleStyle}>Middleman Handles Trade</h3>
-            <p style={featureDescStyle}>
-              A verified middleman coordinates the entire transaction, ensuring both parties are protected.
-            </p>
-          </div>
-
-          <div style={stepCardStyle}>
-            <div style={stepNumberStyle}>4</div>
-            <h3 style={featureTitleStyle}>Item Delivered Safely</h3>
-            <p style={featureDescStyle}>
-              Once payment is confirmed and item is verified, it's delivered to you securely.
-            </p>
-          </div>
-        </div>
-      </section>
 
       {/* Roles Section */}
-      <section style={sectionStyle}>
+      <section id="platform-roles" style={sectionStyle}>
         <h2 style={sectionTitleStyle}>Platform Roles</h2>
         <p style={sectionSubtitleStyle}>
           Understanding how each role contributes to a safe trading environment.
@@ -474,7 +695,7 @@ function Landing() {
           display: 'flex',
           flexDirection: isMobile ? 'column' : 'row',
           gap: isMobile ? '16px' : '24px',
-          marginTop: isMobile ? '32px' : '48px',
+          marginTop: isMobile ? '20px' : '24px',
           flexWrap: 'wrap'
         }}>
           <div style={roleCardStyle}>
@@ -508,7 +729,7 @@ function Landing() {
       </section>
 
       {/* Trust & Safety Section */}
-      <section style={{ ...sectionStyle, backgroundColor: '#131829' }}>
+      <section id="trust-safety" style={{ ...sectionStyle, backgroundColor: '#131829' }}>
         <h2 style={sectionTitleStyle}>Trust & Safety</h2>
         <p style={sectionSubtitleStyle}>
           Your security is our top priority. We enforce strict rules to protect all users.
@@ -516,7 +737,7 @@ function Landing() {
         <div style={{
           maxWidth: '800px',
           margin: '0 auto',
-          marginTop: isMobile ? '32px' : '48px'
+          marginTop: '24px'
         }}>
           <div style={trustCardStyle}>
             <h3 style={{ ...featureTitleStyle, textAlign: 'left', marginBottom: '12px' }}>🚫 No Off-Platform Trades</h3>
@@ -548,80 +769,52 @@ function Landing() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section style={{ ...sectionStyle, textAlign: 'center', paddingTop: '60px', paddingBottom: '60px' }}>
-        <h2 style={{ ...sectionTitleStyle, marginBottom: '16px' }}>Ready to Start Trading?</h2>
-        <p style={{ ...sectionSubtitleStyle, marginBottom: '32px' }}>
-          Join thousands of players trading safely on McFleet Marketplace.
-        </p>
-        <button
-          onClick={handleDiscordLogin}
-          style={{
-            ...primaryButtonStyle,
-            fontSize: isMobile ? '16px' : '18px',
-            padding: isMobile ? '16px 32px' : '18px 40px'
-          }}
-          onMouseEnter={(e) => {
-            e.target.style.backgroundColor = '#f59e0b';
-            e.target.style.transform = 'scale(1.05)';
-            e.target.style.boxShadow = '0 6px 20px rgba(251, 191, 36, 0.4)';
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.backgroundColor = '#fbbf24';
-            e.target.style.transform = 'scale(1)';
-            e.target.style.boxShadow = '0 4px 16px rgba(251, 191, 36, 0.3)';
-          }}
-        >
-          Get Started with Discord
-        </button>
-      </section>
 
       {/* Buyer & Seller Rules */}
-      <section style={sectionStyle}>
+      <section id="buyer-seller-rules" style={{ ...sectionStyle, backgroundColor: '#131829' }}>
         <h2 style={sectionTitleStyle}>Buyer & Seller Rules</h2>
         <p style={sectionSubtitleStyle}>
-          Quick reminders to keep every trade safe. Full details are shown in-app after login.
+          Essential rules to keep every trade safe. Full details are shown in-app after login.
         </p>
         <div style={{
-          display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',
-          gap: '16px'
+          maxWidth: '900px',
+          margin: '0 auto',
+          marginTop: '24px'
         }}>
-          <div style={{
-            backgroundColor: '#1e2338',
-            border: '1px solid #2d3447',
-            borderRadius: '12px',
-            padding: '20px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.25)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-              <span style={{ fontSize: '20px' }}>🛡️</span>
-              <h3 style={{ margin: 0, color: '#ffffff', fontSize: '18px' }}>Buyer Rules</h3>
-            </div>
-            <ul style={{ margin: 0, paddingLeft: '18px', color: '#b8bcc8', lineHeight: 1.7, fontSize: '14px' }}>
-              <li>Only pay after middleman instructions; never outside the flow.</li>
-              <li>Follow middleman verification steps (ID/IGN/Discord) exactly.</li>
-              <li>Do not share personal/payment info outside the secured chat.</li>
-              <li>Report suspicious behavior immediately; open disputes when needed.</li>
+          <div style={trustCardStyle}>
+            <h3 style={{ ...featureTitleStyle, textAlign: 'left', marginBottom: '12px', color: '#fbbf24' }}>
+              🛡️ Buyer Rules
+            </h3>
+            <ul style={{
+              margin: 0,
+              paddingLeft: '24px',
+              color: '#dcddde',
+              lineHeight: '1.8',
+              fontSize: '15px'
+            }}>
+              <li style={{ marginBottom: '8px' }}>Only pay after middleman instructions; never outside the flow.</li>
+              <li style={{ marginBottom: '8px' }}>Follow middleman verification steps (ID/IGN/Discord) exactly.</li>
+              <li style={{ marginBottom: '8px' }}>Do not share personal/payment info outside the secured chat.</li>
+              <li style={{ marginBottom: '8px' }}>Report suspicious behavior immediately; open disputes when needed.</li>
               <li>Responses must be through the provided acknowledge buttons.</li>
             </ul>
           </div>
-          <div style={{
-            backgroundColor: '#1e2338',
-            border: '1px solid #2d3447',
-            borderRadius: '12px',
-            padding: '20px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.25)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-              <span style={{ fontSize: '20px' }}>✅</span>
-              <h3 style={{ margin: 0, color: '#ffffff', fontSize: '18px' }}>Seller Rules</h3>
-            </div>
-            <ul style={{ margin: 0, paddingLeft: '18px', color: '#b8bcc8', lineHeight: 1.7, fontSize: '14px' }}>
-              <li>Provide accurate listings (price, stock, description, survival).</li>
-              <li>Wait for middleman instructions before handing over any item.</li>
-              <li>Keep all trade communication within the platform/assigned middleman.</li>
-              <li>No off-platform payments or side deals; follow payout steps only.</li>
+
+          <div style={trustCardStyle}>
+            <h3 style={{ ...featureTitleStyle, textAlign: 'left', marginBottom: '12px', color: '#fbbf24' }}>
+              ✅ Seller Rules
+            </h3>
+            <ul style={{
+              margin: 0,
+              paddingLeft: '24px',
+              color: '#dcddde',
+              lineHeight: '1.8',
+              fontSize: '15px'
+            }}>
+              <li style={{ marginBottom: '8px' }}>Provide accurate listings (price, stock, description, survival).</li>
+              <li style={{ marginBottom: '8px' }}>Wait for middleman instructions before handing over any item.</li>
+              <li style={{ marginBottom: '8px' }}>Keep all trade communication within the platform/assigned middleman.</li>
+              <li style={{ marginBottom: '8px' }}>No off-platform payments or side deals; follow payout steps only.</li>
               <li>Respect disputes and admin reviews; respond promptly to requests.</li>
             </ul>
           </div>
@@ -631,81 +824,161 @@ function Landing() {
       {/* Footer */}
       <footer style={footerStyle}>
         <div style={footerContentStyle}>
-          <div style={{ textAlign: isMobile ? 'center' : 'left' }}>
+          <div style={{ textAlign: isMobile ? 'center' : 'left', flex: 1 }}>
             <div style={{
               display: 'flex',
               alignItems: 'center',
               gap: '12px',
-              marginBottom: '16px',
+              marginBottom: '12px',
               justifyContent: isMobile ? 'center' : 'flex-start'
             }}>
               <div style={{
-                width: '32px',
-                height: '32px',
+                width: '40px',
+                height: '40px',
                 background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
-                borderRadius: '8px',
+                borderRadius: '10px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontWeight: '700',
                 color: '#0a0e27',
-                fontSize: '18px'
+                fontSize: '20px',
+                boxShadow: '0 4px 12px rgba(251, 191, 36, 0.3)'
               }}>
                 M
               </div>
-              <span style={{ fontSize: '18px', fontWeight: '700', color: '#ffffff' }}>McFleet Shop</span>
+              <span style={{ fontSize: '20px', fontWeight: '700', color: '#ffffff' }}>McFleet Shop</span>
             </div>
-            <p style={{ color: '#6b7280', fontSize: '13px', marginTop: '8px' }}>
-              Safe Minecraft item trading platform
+            <p style={{ color: '#9ca3af', fontSize: '14px', lineHeight: '1.6', maxWidth: '300px', margin: isMobile ? '0 auto' : '0' }}>
+              McFleet Shop — a trusted middleman marketplace for Minecraft IRL trades.
+            </p>
+            <p style={{ color: '#6b7280', fontSize: '12px', marginTop: '12px', maxWidth: '300px', marginLeft: isMobile ? 'auto' : '0', marginRight: isMobile ? 'auto' : '0' }}>
+              McFleet Shop is a trading platform and is not affiliated with Mojang or Microsoft.
             </p>
           </div>
 
           <div style={{
             display: 'flex',
             flexDirection: isMobile ? 'column' : 'row',
-            gap: isMobile ? '16px' : '32px',
-            alignItems: isMobile ? 'center' : 'flex-start'
+            gap: isMobile ? '24px' : '48px',
+            alignItems: isMobile ? 'center' : 'flex-start',
+            flex: 1,
+            justifyContent: isMobile ? 'center' : 'flex-end'
           }}>
             <div style={{ textAlign: isMobile ? 'center' : 'left' }}>
-              <h4 style={{ color: '#ffffff', fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}>Quick Links</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <h4 style={{ color: '#ffffff', fontSize: '15px', fontWeight: '600', marginBottom: '16px' }}>Learn More</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <a
-                  href="/login"
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const element = document.getElementById('what-is-mcfleet');
+                    if (element) element.scrollIntoView({ behavior: 'smooth' });
+                  }}
                   style={footerLinkStyle}
                   onMouseEnter={(e) => e.target.style.color = '#fbbf24'}
                   onMouseLeave={(e) => e.target.style.color = '#b8bcc8'}
                 >
-                  Login
+                  What is McFleet Shop?
+                </a>
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const element = document.getElementById('how-protected');
+                    if (element) element.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  style={footerLinkStyle}
+                  onMouseEnter={(e) => e.target.style.color = '#fbbf24'}
+                  onMouseLeave={(e) => e.target.style.color = '#b8bcc8'}
+                >
+                  How Trades Are Protected
+                </a>
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const element = document.getElementById('how-it-works');
+                    if (element) element.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  style={footerLinkStyle}
+                  onMouseEnter={(e) => e.target.style.color = '#fbbf24'}
+                  onMouseLeave={(e) => e.target.style.color = '#b8bcc8'}
+                >
+                  How Trading Works
+                </a>
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const element = document.getElementById('why-discord');
+                    if (element) element.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  style={footerLinkStyle}
+                  onMouseEnter={(e) => e.target.style.color = '#fbbf24'}
+                  onMouseLeave={(e) => e.target.style.color = '#b8bcc8'}
+                >
+                  Why Discord Login?
                 </a>
               </div>
             </div>
 
             <div style={{ textAlign: isMobile ? 'center' : 'left' }}>
-              <h4 style={{ color: '#ffffff', fontSize: '14px', fontWeight: '600', marginBottom: '12px' }}>Rules & Safety</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <h4 style={{ color: '#ffffff', fontSize: '15px', fontWeight: '600', marginBottom: '16px' }}>Safety & Rules</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <a
                   href="#"
                   onClick={(e) => {
                     e.preventDefault();
-                    alert('Buyer Rules page - Available after login');
+                    const element = document.getElementById('safety');
+                    if (element) element.scrollIntoView({ behavior: 'smooth' });
                   }}
                   style={footerLinkStyle}
                   onMouseEnter={(e) => e.target.style.color = '#fbbf24'}
                   onMouseLeave={(e) => e.target.style.color = '#b8bcc8'}
                 >
-                  Buyer Rules
+                  Safety Assurances
                 </a>
                 <a
                   href="#"
                   onClick={(e) => {
                     e.preventDefault();
-                    alert('Seller Rules page - Available after login');
+                    const element = document.getElementById('trust-safety');
+                    if (element) element.scrollIntoView({ behavior: 'smooth' });
                   }}
                   style={footerLinkStyle}
                   onMouseEnter={(e) => e.target.style.color = '#fbbf24'}
                   onMouseLeave={(e) => e.target.style.color = '#b8bcc8'}
                 >
-                  Seller Rules
+                  Trust & Safety
+                </a>
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const element = document.getElementById('buyer-seller-rules');
+                    if (element) element.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  style={footerLinkStyle}
+                  onMouseEnter={(e) => e.target.style.color = '#fbbf24'}
+                  onMouseLeave={(e) => e.target.style.color = '#b8bcc8'}
+                >
+                  Buyer & Seller Rules
+                </a>
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const loginSection = document.querySelector('[data-section="login"]');
+                    if (loginSection) {
+                      loginSection.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  }}
+                  style={footerLinkStyle}
+                  onMouseEnter={(e) => e.target.style.color = '#fbbf24'}
+                  onMouseLeave={(e) => e.target.style.color = '#b8bcc8'}
+                >
+                  Login with Discord
                 </a>
               </div>
             </div>
@@ -719,8 +992,11 @@ function Landing() {
           borderTop: '1px solid #2d3447',
           textAlign: 'center'
         }}>
-          <p style={{ color: '#6b7280', fontSize: '12px' }}>
-            © 2025 McFleet Shop. All rights reserved. | Trade safely, trade smart.
+          <p style={{ color: '#6b7280', fontSize: '13px', lineHeight: '1.6' }}>
+            © 2025 McFleet Shop. All rights reserved.
+          </p>
+          <p style={{ color: '#6b7280', fontSize: '12px', marginTop: '8px' }}>
+            Trade safely, trade smart. Every transaction is protected.
           </p>
         </div>
       </footer>

@@ -9,9 +9,9 @@ function ProtectedRoute({ allowedRoles, children }) {
     return <div>Loading...</div>;
   }
 
-  // If not authenticated, redirect to login
+  // If not authenticated, redirect to landing page
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
 
   // If authenticated but role not allowed, redirect to forbidden
