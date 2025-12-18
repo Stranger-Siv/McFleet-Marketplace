@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import apiClient from '../api/axios';
 import LoadingSpinner from './LoadingSpinner';
-import useResponsive from '../hooks/useResponsive';
+import { useResponsive } from '../hooks/useResponsive';
 
 function UserInspector({ userId, isOpen, onClose, onRoleChange }) {
   const [loading, setLoading] = useState(true);
