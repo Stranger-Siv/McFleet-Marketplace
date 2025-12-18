@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import apiClient from '../../api/axios';
 import { usePolling } from '../../hooks/usePolling';
+import { useResponsive } from '../../hooks/useResponsive';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ConfirmationModal from '../../components/ConfirmationModal';
 
@@ -12,6 +13,7 @@ function Listings() {
   const [actionMessage, setActionMessage] = useState(null);
   const [actionError, setActionError] = useState(null);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, listingId: null, listingTitle: null });
+  const { isMobile, isTablet } = useResponsive();
 
   const fetchListings = async () => {
     try {
@@ -106,20 +108,23 @@ function Listings() {
 
   const containerStyle = {
     maxWidth: '1400px',
-    margin: '0 auto'
+    margin: '0 auto',
+    padding: isMobile ? '16px' : isTablet ? '20px' : '24px',
+    width: '100%',
+    boxSizing: 'border-box'
   };
 
   const titleStyle = {
     color: '#ffffff',
-    fontSize: '28px',
+    fontSize: isMobile ? '24px' : '28px',
     fontWeight: '700',
-    marginBottom: '8px'
+    marginBottom: isMobile ? '8px' : '8px'
   };
 
   const subtitleStyle = {
-    color: '#6b7280',
-    fontSize: '14px',
-    marginBottom: '24px'
+    color: '#9ca3af',
+    fontSize: isMobile ? '13px' : '14px',
+    marginBottom: isMobile ? '16px' : '24px'
   };
 
   const messageStyle = {
@@ -211,11 +216,50 @@ function Listings() {
 
   const emptyStateStyle = {
     textAlign: 'center',
-    padding: '60px 20px',
+    padding: isMobile ? '40px 16px' : '60px 20px',
     color: '#b8bcc8',
     backgroundColor: '#1e2338',
     borderRadius: '12px',
     border: '1px solid #2d3447'
+  };
+
+  const mobileCardListStyle = {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+    marginTop: '12px'
+  };
+
+  const mobileCardStyle = {
+    backgroundColor: '#1e2338',
+    borderRadius: '12px',
+    border: '1px solid #2d3447',
+    padding: '14px',
+    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.5)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px'
+  };
+
+  const mobileRowStyle = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '8px',
+    fontSize: '13px',
+    color: '#e5e7eb'
+  };
+
+  const mobileLabelStyle = {
+    color: '#9ca3af',
+    fontWeight: 500,
+    marginRight: '6px'
+  };
+
+  const mobileButtonRowStyle = {
+    marginTop: '8px',
+    display: 'flex',
+    justifyContent: 'flex-end'
   };
 
   if (loading) {
@@ -263,6 +307,76 @@ function Listings() {
           <div style={{ fontSize: '24px', marginBottom: '12px', color: '#ffffff' }}>
             No listings found
           </div>
+        </div>
+      ) : isMobile ? (
+        <div style={mobileCardListStyle}>
+          {listings.map((listing) => (
+            <div key={listing._id} style={mobileCardStyle}>
+              <div style={mobileRowStyle}>
+                <div style={{ fontWeight: 600 }}>
+                  {listing.title}
+                  {listing.itemName && (
+                    <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>
+                      {listing.itemName}
+                    </div>
+                  )}
+                </div>
+                <span style={statusBadgeStyle(listing.status)}>
+                  {getStatusLabel(listing.status)}
+                </span>
+              </div>
+              <div style={mobileRowStyle}>
+                <span style={mobileLabelStyle}>Seller</span>
+                <span style={{ fontSize: '13px', color: '#e5e7eb' }}>
+                  {listing.seller?.discordUsername || 'Unknown'}
+                </span>
+              </div>
+              <div style={mobileRowStyle}>
+                <span style={mobileLabelStyle}>Price</span>
+                <span style={{ fontWeight: 600 }}>{formatCurrency(listing.price)}</span>
+              </div>
+              <div style={mobileRowStyle}>
+                <span style={mobileLabelStyle}>Category</span>
+                <span style={{ fontSize: '13px', color: '#e5e7eb' }}>
+                  {listing.category} • {listing.survival}
+                </span>
+              </div>
+              <div style={mobileRowStyle}>
+                <span style={mobileLabelStyle}>Created</span>
+                <span style={{ fontSize: '12px', color: '#9ca3af' }}>
+                  {new Date(listing.createdAt).toLocaleDateString()}
+                </span>
+              </div>
+              <div style={mobileButtonRowStyle}>
+                {listing.status === 'active' ? (
+                  <button
+                    onClick={() => handleDisableListingClick(listing._id, listing.title)}
+                    disabled={actionLoading[listing._id]}
+                    style={{
+                      ...(actionLoading[listing._id] ? disabledButtonStyle : disableButtonStyle),
+                      minWidth: '140px',
+                      justifyContent: 'center',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    {actionLoading[listing._id] ? (
+                      <>
+                        <LoadingSpinner size="12px" color="#0a0e27" /> Disabling...
+                      </>
+                    ) : (
+                      'Disable Listing'
+                    )}
+                  </button>
+                ) : (
+                  <span style={{ color: '#6b7280', fontSize: '13px' }}>
+                    {listing.status === 'disabled_by_admin' ? 'Disabled' : 'N/A'}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       ) : (
         <div style={tableContainerStyle}>

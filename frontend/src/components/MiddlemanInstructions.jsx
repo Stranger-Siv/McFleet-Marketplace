@@ -252,7 +252,7 @@ function MiddlemanInstructions({
                 onChange={(e) => setForm((prev) => ({ ...prev, message: e.target.value }))}
                 rows={3}
                 maxLength={500}
-                placeholder="Provide clear, single-user instructions. Example: Please accept the friend request sent by the middleman from Discord ID xyz#1234."
+                placeholder="Provide clear, single-user instructions.."
                 style={{
                   width: '100%',
                   padding: '12px',

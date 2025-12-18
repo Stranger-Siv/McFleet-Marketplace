@@ -279,42 +279,50 @@ function OrderDetail() {
 
   const containerStyle = {
     padding: '20px',
-    maxWidth: '800px',
+    maxWidth: '960px',
     margin: '0 auto'
   };
 
+  const pageTitleStyle = {
+    fontSize: '24px',
+    fontWeight: '700',
+    marginBottom: '16px',
+    color: '#ffffff'
+  };
+
   const sectionStyle = {
-    backgroundColor: '#fff',
-    border: '1px solid #ddd',
-    borderRadius: '8px',
-    padding: '20px',
-    marginBottom: '20px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+    backgroundColor: '#111827',
+    border: '1px solid #1f2937',
+    borderRadius: '12px',
+    padding: '18px',
+    marginBottom: '16px',
+    boxShadow: '0 4px 18px rgba(0, 0, 0, 0.45)'
   };
 
   const sectionTitleStyle = {
-    fontSize: '18px',
-    fontWeight: 'bold',
-    marginBottom: '16px',
-    color: '#333',
-    borderBottom: '2px solid #e5e7eb',
-    paddingBottom: '8px'
+    fontSize: '16px',
+    fontWeight: '600',
+    marginBottom: '12px',
+    color: '#e5e7eb',
+    borderBottom: '1px solid #1f2937',
+    paddingBottom: '6px'
   };
 
   const detailRowStyle = {
     display: 'flex',
     justifyContent: 'space-between',
-    padding: '12px 0',
-    borderBottom: '1px solid #f3f4f6'
+    gap: '12px',
+    padding: '10px 0',
+    borderBottom: '1px solid #1f2937'
   };
 
   const labelStyle = {
     fontWeight: '500',
-    color: '#666'
+    color: '#9ca3af'
   };
 
   const valueStyle = {
-    color: '#333',
+    color: '#e5e7eb',
     fontWeight: '500'
   };
 
@@ -329,12 +337,12 @@ function OrderDetail() {
   };
 
   const listingInfoStyle = {
-    marginTop: '12px'
+    marginTop: '4px'
   };
 
   return (
     <div style={containerStyle}>
-      <h1>Order Details</h1>
+      <h1 style={pageTitleStyle}>Order Details</h1>
 
       {/* Order Timeline */}
       <OrderTimeline order={order} />
@@ -442,10 +450,10 @@ function OrderDetail() {
       <div style={sectionStyle}>
         <div style={sectionTitleStyle}>Parties Involved</div>
         <div style={detailRowStyle}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%', flexWrap: 'wrap' }}>
             <div style={{ flex: 1 }}>
               <span style={labelStyle}>Buyer:</span>
-              <span style={valueStyle}>
+              <span style={{ ...valueStyle, marginLeft: '6px' }}>
                 {order.buyer?.discordUsername || 'Unknown'}
               </span>
             </div>
@@ -455,26 +463,30 @@ function OrderDetail() {
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
-                  padding: '6px 12px',
+                  padding: '8px 14px',
                   backgroundColor: '#5865F2',
                   color: 'white',
                   textDecoration: 'none',
-                  borderRadius: '4px',
-                  fontSize: '14px',
+                  borderRadius: '9999px',
+                  fontSize: '13px',
                   fontWeight: '500',
-                  display: 'inline-block'
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  maxWidth: '100%',
+                  marginTop: '6px'
                 }}
               >
-                Contact on Discord
+                <span>Contact on Discord</span>
               </a>
             )}
           </div>
         </div>
         <div style={detailRowStyle}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '100%', flexWrap: 'wrap' }}>
             <div style={{ flex: 1 }}>
               <span style={labelStyle}>Seller:</span>
-              <span style={valueStyle}>
+              <span style={{ ...valueStyle, marginLeft: '6px' }}>
                 {order.seller?.discordUsername || 'Unknown'}
               </span>
             </div>
@@ -484,17 +496,21 @@ function OrderDetail() {
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
-                  padding: '6px 12px',
+                  padding: '8px 14px',
                   backgroundColor: '#5865F2',
                   color: 'white',
                   textDecoration: 'none',
-                  borderRadius: '4px',
-                  fontSize: '14px',
+                  borderRadius: '9999px',
+                  fontSize: '13px',
                   fontWeight: '500',
-                  display: 'inline-block'
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  maxWidth: '100%',
+                  marginTop: '6px'
                 }}
               >
-                Contact on Discord
+                <span>Contact on Discord</span>
               </a>
             )}
           </div>
@@ -508,13 +524,13 @@ function OrderDetail() {
           </div>
         )}
         <div style={{
-          marginTop: '16px',
+          marginTop: '12px',
           padding: '12px',
-          backgroundColor: '#eff6ff',
-          border: '1px solid #bfdbfe',
-          borderRadius: '4px',
-          fontSize: '14px',
-          color: '#1e40af'
+          backgroundColor: '#0b1120',
+          border: '1px dashed #374151',
+          borderRadius: '8px',
+          fontSize: '13px',
+          color: '#9ca3af'
         }}>
           <strong>Your Role:</strong> As the assigned middleman, you coordinate communication between buyer and seller. 
           Use the contact buttons above to reach out to each party as needed.

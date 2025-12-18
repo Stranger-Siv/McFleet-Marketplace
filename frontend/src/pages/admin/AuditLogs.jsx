@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import apiClient from '../../api/axios';
 import { usePolling } from '../../hooks/usePolling';
+import { useResponsive } from '../../hooks/useResponsive';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
 function AuditLogs() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { isMobile, isTablet } = useResponsive();
 
   const fetchLogs = async () => {
     try {
@@ -94,20 +96,23 @@ function AuditLogs() {
 
   const containerStyle = {
     maxWidth: '1400px',
-    margin: '0 auto'
+    margin: '0 auto',
+    padding: isMobile ? '16px' : isTablet ? '20px' : '24px',
+    width: '100%',
+    boxSizing: 'border-box'
   };
 
   const titleStyle = {
     color: '#ffffff',
-    fontSize: '28px',
+    fontSize: isMobile ? '24px' : '28px',
     fontWeight: '700',
-    marginBottom: '8px'
+    marginBottom: isMobile ? '8px' : '8px'
   };
 
   const subtitleStyle = {
-    color: '#6b7280',
-    fontSize: '14px',
-    marginBottom: '24px'
+    color: '#9ca3af',
+    fontSize: isMobile ? '13px' : '14px',
+    marginBottom: isMobile ? '16px' : '24px'
   };
 
   const errorStyle = {
@@ -175,103 +180,167 @@ function AuditLogs() {
 
   const emptyStateStyle = {
     textAlign: 'center',
-    padding: '60px 20px',
+    padding: isMobile ? '40px 16px' : '60px 20px',
     color: '#b8bcc8',
     backgroundColor: '#1e2338',
     borderRadius: '12px',
     border: '1px solid #2d3447'
   };
 
-  if (loading) {
-    return (
-      <div style={containerStyle}>
-        <h1 style={titleStyle}>Audit Logs</h1>
-        <div style={{ textAlign: 'center', padding: '40px', color: '#b8bcc8' }}>
-          <LoadingSpinner size="32px" /> Loading audit logs...
-        </div>
-      </div>
-    );
-  }
+  const mobileCardListStyle = {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+    marginTop: '12px'
+  };
 
-  if (error) {
-    return (
-      <div style={containerStyle}>
-        <h1 style={titleStyle}>Audit Logs</h1>
-        <div style={errorStyle}>Error: {error}</div>
-      </div>
-    );
-  }
+  const mobileCardStyle = {
+    backgroundColor: '#1e2338',
+    borderRadius: '12px',
+    border: '1px solid #2d3447',
+    padding: '14px',
+    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.5)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px'
+  };
+
+  const mobileRowStyle = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '8px',
+    fontSize: '13px',
+    color: '#e5e7eb'
+  };
+
+  const mobileLabelStyle = {
+    color: '#9ca3af',
+    fontWeight: 500,
+    marginRight: '6px'
+  };
 
   return (
     <div style={containerStyle}>
-      <h1 style={titleStyle}>Audit Logs</h1>
-      <p style={subtitleStyle}>
-        Complete record of all admin actions. Logs are immutable and read-only.
-      </p>
-
-      {logs.length === 0 ? (
-        <div style={emptyStateStyle}>
-          <div style={{ fontSize: '24px', marginBottom: '12px', color: '#ffffff' }}>
-            No audit logs found
+      {loading ? (
+        <>
+          <h1 style={titleStyle}>Audit Logs</h1>
+          <div style={{ textAlign: 'center', padding: '40px', color: '#b8bcc8' }}>
+            <LoadingSpinner size="32px" /> Loading audit logs...
           </div>
-          <div style={{ fontSize: '14px' }}>
-            Audit logs will appear here as admin actions are performed.
-          </div>
-        </div>
+        </>
+      ) : error ? (
+        <>
+          <h1 style={titleStyle}>Audit Logs</h1>
+          <div style={errorStyle}>Error: {error}</div>
+        </>
       ) : (
-        <div style={tableContainerStyle}>
-          <table style={tableStyle}>
-            <thead>
-              <tr>
-                <th style={thStyle}>Action</th>
-                <th style={thStyle}>Target</th>
-                <th style={thStyle}>Performed By</th>
-                <th style={thStyle}>Date & Time</th>
-                <th style={thStyle}>Details</th>
-              </tr>
-            </thead>
-            <tbody>
+        <>
+          <h1 style={titleStyle}>Audit Logs</h1>
+          <p style={subtitleStyle}>
+            Complete record of all admin actions. Logs are immutable and read-only.
+          </p>
+
+          {logs.length === 0 ? (
+            <div style={emptyStateStyle}>
+              <div style={{ fontSize: '24px', marginBottom: '12px', color: '#ffffff' }}>
+                No audit logs found
+              </div>
+              <div style={{ fontSize: '14px' }}>
+                Audit logs will appear here as admin actions are performed.
+              </div>
+            </div>
+          ) : isMobile ? (
+            <div style={mobileCardListStyle}>
               {logs.map((log) => (
-                <tr
-                  key={log._id}
-                  style={{
-                    transition: 'background-color 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#252b42';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#1e2338';
-                  }}
-                >
-                  <td style={tdStyle}>
+                <div key={log._id} style={mobileCardStyle}>
+                  <div style={mobileRowStyle}>
                     <span style={actionBadgeStyle(log.action)}>
                       {getActionLabel(log.action)}
                     </span>
-                  </td>
-                  <td style={tdStyle}>
-                    {getTargetLabel(log.targetType, log.targetId)}
-                  </td>
-                  <td style={tdStyle}>
-                    <strong>{log.admin?.discordUsername || 'Unknown'}</strong>
-                  </td>
-                  <td style={tdStyle}>
-                    {formatDateTime(log.createdAt)}
-                  </td>
-                  <td style={tdStyle}>
-                    {log.note ? (
-                      <div>
-                        <div style={{ color: '#ffffff' }}>{log.note}</div>
-                      </div>
-                    ) : (
-                      <span style={{ color: '#6b7280', fontSize: '13px' }}>—</span>
-                    )}
-                  </td>
-                </tr>
+                    <span style={{ fontSize: '11px', color: '#9ca3af' }}>
+                      {formatDateTime(log.createdAt)}
+                    </span>
+                  </div>
+                  <div style={mobileRowStyle}>
+                    <span style={mobileLabelStyle}>Target</span>
+                    <span style={{ fontSize: '13px', color: '#e5e7eb' }}>
+                      {getTargetLabel(log.targetType, log.targetId)}
+                    </span>
+                  </div>
+                  <div style={mobileRowStyle}>
+                    <span style={mobileLabelStyle}>By</span>
+                    <span style={{ fontSize: '13px', color: '#e5e7eb' }}>
+                      {log.admin?.discordUsername || 'Unknown'}
+                    </span>
+                  </div>
+                  {log.note && (
+                    <div style={{ fontSize: '12px', color: '#e5e7eb', marginTop: '4px' }}>
+                      {log.note}
+                    </div>
+                  )}
+                  {!log.note && (
+                    <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>—</div>
+                  )}
+                </div>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </div>
+          ) : (
+            <div style={tableContainerStyle}>
+              <table style={tableStyle}>
+                <thead>
+                  <tr>
+                    <th style={thStyle}>Action</th>
+                    <th style={thStyle}>Target</th>
+                    <th style={thStyle}>Performed By</th>
+                    <th style={thStyle}>Date & Time</th>
+                    <th style={thStyle}>Details</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {logs.map((log) => (
+                    <tr
+                      key={log._id}
+                      style={{
+                        transition: 'background-color 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#252b42';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = '#1e2338';
+                      }}
+                    >
+                      <td style={tdStyle}>
+                        <span style={actionBadgeStyle(log.action)}>
+                          {getActionLabel(log.action)}
+                        </span>
+                      </td>
+                      <td style={tdStyle}>
+                        {getTargetLabel(log.targetType, log.targetId)}
+                      </td>
+                      <td style={tdStyle}>
+                        <strong>{log.admin?.discordUsername || 'Unknown'}</strong>
+                      </td>
+                      <td style={tdStyle}>
+                        {formatDateTime(log.createdAt)}
+                      </td>
+                      <td style={tdStyle}>
+                        {log.note ? (
+                          <div>
+                            <div style={{ color: '#ffffff' }}>{log.note}</div>
+                          </div>
+                        ) : (
+                          <span style={{ color: '#6b7280', fontSize: '13px' }}>—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -48,21 +48,24 @@ function AdminOrderDetail() {
 
   const containerStyle = {
     maxWidth: '1200px',
-    margin: '0 auto'
+    margin: '0 auto',
+    padding: '16px',
+    width: '100%',
+    boxSizing: 'border-box'
   };
 
   const titleStyle = {
     color: '#ffffff',
-    fontSize: '28px',
+    fontSize: '24px',
     fontWeight: '700',
-    marginBottom: '24px'
+    marginBottom: '16px'
   };
 
   const sectionStyle = {
     backgroundColor: '#1e2338',
     border: '1px solid #2d3447',
     borderRadius: '12px',
-    padding: '24px',
+    padding: '16px',
     marginBottom: '24px',
     boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4)'
   };
@@ -70,20 +73,28 @@ function AdminOrderDetail() {
   const infoRowStyle = {
     display: 'flex',
     justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: '12px',
     padding: '12px 0',
     borderBottom: '1px solid #2d3447'
   };
 
   const infoLabelStyle = {
     color: '#b8bcc8',
-    fontSize: '14px',
-    fontWeight: '500'
+    fontSize: '13px',
+    fontWeight: '500',
+    minWidth: '110px',
+    flexShrink: 0
   };
 
   const infoValueStyle = {
     color: '#ffffff',
     fontSize: '14px',
-    fontWeight: '600'
+    fontWeight: '600',
+    textAlign: 'right',
+    wordBreak: 'break-word',
+    overflowWrap: 'anywhere',
+    maxWidth: '100%'
   };
 
   const statusBadgeStyle = (status) => {
@@ -166,7 +177,9 @@ function AdminOrderDetail() {
       <div style={sectionStyle}>
         <div style={infoRowStyle}>
           <span style={infoLabelStyle}>Order ID:</span>
-          <span style={infoValueStyle}>{order._id}</span>
+          <span style={{ ...infoValueStyle, fontFamily: 'monospace', fontSize: '12px' }}>
+            {order._id}
+          </span>
         </div>
         <div style={infoRowStyle}>
           <span style={infoLabelStyle}>Status:</span>
@@ -177,19 +190,21 @@ function AdminOrderDetail() {
           <span style={infoValueStyle}>
             {order.buyer?.discordUsername || 'Unknown'}
             {order.buyer?.discordId && (
-              <a
-                href={`https://discord.com/users/${order.buyer.discordId}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  marginLeft: '8px',
-                  color: '#5865f2',
-                  textDecoration: 'none',
-                  fontSize: '12px'
-                }}
-              >
-                (Contact)
-              </a>
+              <div style={{ marginTop: '4px' }}>
+                <a
+                  href={`https://discord.com/users/${order.buyer.discordId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    color: '#5865f2',
+                    textDecoration: 'none',
+                    fontSize: '12px',
+                    wordBreak: 'break-all'
+                  }}
+                >
+                  Contact on Discord
+                </a>
+              </div>
             )}
           </span>
         </div>
@@ -198,19 +213,21 @@ function AdminOrderDetail() {
           <span style={infoValueStyle}>
             {order.seller?.discordUsername || 'Unknown'}
             {order.seller?.discordId && (
-              <a
-                href={`https://discord.com/users/${order.seller.discordId}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  marginLeft: '8px',
-                  color: '#5865f2',
-                  textDecoration: 'none',
-                  fontSize: '12px'
-                }}
-              >
-                (Contact)
-              </a>
+              <div style={{ marginTop: '4px' }}>
+                <a
+                  href={`https://discord.com/users/${order.seller.discordId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    color: '#5865f2',
+                    textDecoration: 'none',
+                    fontSize: '12px',
+                    wordBreak: 'break-all'
+                  }}
+                >
+                  Contact on Discord
+                </a>
+              </div>
             )}
           </span>
         </div>
@@ -220,19 +237,21 @@ function AdminOrderDetail() {
             <span style={infoValueStyle}>
               {order.middleman?.discordUsername || 'Unknown'}
               {order.middleman?.discordId && (
-                <a
-                  href={`https://discord.com/users/${order.middleman.discordId}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    marginLeft: '8px',
-                    color: '#5865f2',
-                    textDecoration: 'none',
-                    fontSize: '12px'
-                  }}
-                >
-                  (Contact)
-                </a>
+                <div style={{ marginTop: '4px' }}>
+                  <a
+                    href={`https://discord.com/users/${order.middleman.discordId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      color: '#5865f2',
+                      textDecoration: 'none',
+                      fontSize: '12px',
+                      wordBreak: 'break-all'
+                    }}
+                  >
+                    Contact on Discord
+                  </a>
+                </div>
               )}
             </span>
           </div>

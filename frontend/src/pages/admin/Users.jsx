@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import apiClient from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import { usePolling } from '../../hooks/usePolling';
+import { useResponsive } from '../../hooks/useResponsive';
 import ConfirmationModal from '../../components/ConfirmationModal';
 import UserInspector from '../../components/UserInspector';
 
@@ -15,6 +16,7 @@ function Users() {
   const [actionError, setActionError] = useState(null);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, action: null, userId: null, username: null });
   const [inspectingUserId, setInspectingUserId] = useState(null);
+  const { isMobile, isTablet } = useResponsive();
 
   const fetchUsers = async () => {
     try {
@@ -177,14 +179,23 @@ function Users() {
 
   const containerStyle = {
     maxWidth: '1200px',
-    margin: '0 auto'
+    margin: '0 auto',
+    padding: isMobile ? '16px' : isTablet ? '20px' : '24px',
+    width: '100%',
+    boxSizing: 'border-box'
   };
 
   const titleStyle = {
     color: '#ffffff',
-    fontSize: '28px',
+    fontSize: isMobile ? '24px' : '28px',
     fontWeight: '700',
-    marginBottom: '24px'
+    marginBottom: isMobile ? '8px' : '12px'
+  };
+
+  const subtitleStyle = {
+    color: '#9ca3af',
+    fontSize: isMobile ? '13px' : '14px',
+    marginBottom: isMobile ? '16px' : '20px'
   };
 
   const loadingStyle = {
@@ -202,18 +213,54 @@ function Users() {
     marginBottom: '20px'
   };
 
-  if (loading) {
-    return <div style={loadingStyle}>Loading users...</div>;
-  }
+  const mobileCardListStyle = {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+    marginTop: '16px'
+  };
 
-  if (error) {
-    return (
-      <div style={containerStyle}>
-        <h1 style={titleStyle}>User Management</h1>
-        <div style={errorStyle}>Error: {error}</div>
-      </div>
-    );
-  }
+  const mobileCardStyle = {
+    backgroundColor: '#2f3136',
+    borderRadius: '10px',
+    border: '1px solid #40444b',
+    padding: '14px',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px'
+  };
+
+  const mobileRowStyle = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '8px',
+    fontSize: '13px',
+    color: '#dcddde'
+  };
+
+  const mobileLabelStyle = {
+    color: '#9ca3af',
+    fontWeight: 500,
+    marginRight: '6px'
+  };
+
+  const mobileIdStyle = {
+    fontFamily: 'monospace',
+    fontSize: '11px',
+    color: '#9ca3af',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap'
+  };
+
+  const mobileButtonGroupStyle = {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '6px',
+    marginTop: '6px'
+  };
 
   const tableContainerStyle = {
     overflowX: 'auto',
@@ -364,177 +411,345 @@ function Users() {
 
   return (
     <div style={containerStyle}>
-      <h1 style={titleStyle}>User Management</h1>
-
-      {/* Success/Error Messages */}
-      {actionMessage && (
-        <div style={successMessageStyle}>
-          {actionMessage}
-        </div>
-      )}
-
-      {actionError && (
-        <div style={errorMessageStyle}>
-          {actionError}
-        </div>
-      )}
-
-      {users.length === 0 ? (
-        <div style={emptyStateStyle}>
-          <div style={{ fontSize: '24px', marginBottom: '12px', color: '#b9bbbe' }}>
-            No users found
-          </div>
-        </div>
+      {loading ? (
+        <div style={loadingStyle}>Loading users...</div>
+      ) : error ? (
+        <>
+          <h1 style={titleStyle}>User Management</h1>
+          <div style={errorStyle}>Error: {error}</div>
+        </>
       ) : (
-        <div style={tableContainerStyle}>
-          <table style={tableStyle}>
-            <thead>
-              <tr>
-                <th style={{ ...thStyle, width: '15%' }}>Username</th>
-                <th style={{ ...thStyle, width: '20%' }}>User ID</th>
-                <th style={{ ...thStyle, width: '10%' }}>Role</th>
-                <th style={{ ...thStyle, width: '10%' }}>Status</th>
-                <th style={{ ...thStyle, width: '12%' }}>Registered</th>
-                <th style={{ ...thStyle, width: '33%' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
+        <>
+          <h1 style={titleStyle}>User Management</h1>
+          <p style={subtitleStyle}>
+            Inspect accounts, manage bans and middleman roles, and open a read-only preview of each user&apos;s dashboard.
+          </p>
+
+          {/* Success/Error Messages */}
+          {actionMessage && (
+            <div style={successMessageStyle}>
+              {actionMessage}
+            </div>
+          )}
+
+          {actionError && (
+            <div style={errorMessageStyle}>
+              {actionError}
+            </div>
+          )}
+
+          {users.length === 0 ? (
+            <div style={emptyStateStyle}>
+              <div style={{ fontSize: '24px', marginBottom: '12px', color: '#b9bbbe' }}>
+                No users found
+              </div>
+            </div>
+          ) : isMobile ? (
+            <div style={mobileCardListStyle}>
               {users.map((user) => {
                 const isCurrentUser = user._id === currentUser?.userId;
                 const isLoading = actionLoading[user._id];
 
                 return (
-                  <tr 
-                    key={user._id}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = '#40444b';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                    }}
-                  >
-                    <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
-                      <div style={{ 
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        maxWidth: '100%'
-                      }}>
-                        <span style={{ color: '#ffffff', fontWeight: '500' }}>
-                          {user.discordUsername || 'Unknown'}
-                        </span>
+                  <div key={user._id} style={mobileCardStyle}>
+                    <div style={mobileRowStyle}>
+                      <div style={{ fontWeight: 500 }}>
+                        {user.discordUsername || 'Unknown'}
                         {isCurrentUser && (
-                          <span style={{ marginLeft: '8px', fontSize: '12px', color: '#72767d' }}>
+                          <span style={{ marginLeft: '6px', fontSize: '11px', color: '#9ca3af' }}>
                             (You)
                           </span>
                         )}
                       </div>
-                    </td>
-                    <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
-                      <div style={{ 
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        maxWidth: '100%',
-                        fontFamily: 'monospace'
-                      }} title={user._id}>
-                        <span style={{ 
-                          color: '#b8bcc8', 
-                          fontSize: '11px'
-                        }}>
-                          {user._id}
-                        </span>
-                      </div>
-                    </td>
-                    <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
                       <span style={roleBadgeStyle(user.role)}>
                         {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
                       </span>
-                    </td>
-                    <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
+                    </div>
+                    <div style={mobileRowStyle}>
+                      <span style={mobileLabelStyle}>User ID</span>
+                      <span style={mobileIdStyle}>{user._id}</span>
+                    </div>
+                    <div style={mobileRowStyle}>
+                      <span style={mobileLabelStyle}>Status</span>
                       <span style={statusBadgeStyle(user.banned)}>
                         {user.banned ? 'Banned' : 'Active'}
                       </span>
-                    </td>
-                    <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
-                      <span style={{ color: '#b8bcc8', fontSize: '13px' }}>
+                    </div>
+                    <div style={mobileRowStyle}>
+                      <span style={mobileLabelStyle}>Registered</span>
+                      <span style={{ fontSize: '12px', color: '#9ca3af' }}>
                         {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
                       </span>
-                    </td>
-                    <td style={{ ...tdStyle, whiteSpace: 'normal', overflow: 'visible' }}>
-                      <div style={buttonGroupStyle}>
-                        <button
-                          onClick={() => setInspectingUserId(user._id)}
-                          style={viewUserButtonStyle}
-                          onMouseEnter={(e) => e.target.style.backgroundColor = '#4752c4'}
-                          onMouseLeave={(e) => e.target.style.backgroundColor = '#5865f2'}
-                        >
-                          View as User
-                        </button>
-                        {user.banned ? (
-                          <button
-                            onClick={() => handleUnbanClick(user._id, user.discordUsername)}
-                            disabled={isLoading || isCurrentUser}
-                            style={{
-                              ...unbanButtonStyle,
-                              ...(isLoading || isCurrentUser ? disabledButtonStyle : {})
-                            }}
-                            onMouseEnter={(e) => !isLoading && !isCurrentUser && (e.target.style.backgroundColor = '#2d8f4f')}
-                            onMouseLeave={(e) => !isLoading && !isCurrentUser && (e.target.style.backgroundColor = '#3ba55d')}
-                          >
-                            {isLoading ? 'Processing...' : 'Unban'}
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleBanClick(user._id, user.discordUsername)}
-                            disabled={isLoading || isCurrentUser || user.role === 'admin'}
-                            style={{
-                              ...banButtonStyle,
-                              ...(isLoading || isCurrentUser || user.role === 'admin' ? disabledButtonStyle : {})
-                            }}
-                            title={user.role === 'admin' ? 'Cannot ban admin' : isCurrentUser ? 'Cannot ban yourself' : ''}
-                            onMouseEnter={(e) => !isLoading && !isCurrentUser && user.role !== 'admin' && (e.target.style.backgroundColor = '#c03537')}
-                            onMouseLeave={(e) => !isLoading && !isCurrentUser && user.role !== 'admin' && (e.target.style.backgroundColor = '#ed4245')}
-                          >
-                            {isLoading ? 'Processing...' : 'Ban'}
-                          </button>
-                        )}
-
-                        {user.role === 'middleman' ? (
-                          <button
-                            onClick={() => handleRemoveMiddleman(user._id)}
-                            disabled={isLoading || isCurrentUser}
-                            style={{
-                              ...removeMiddlemanButtonStyle,
-                              ...(isLoading || isCurrentUser ? disabledButtonStyle : {})
-                            }}
-                            onMouseEnter={(e) => !isLoading && !isCurrentUser && (e.target.style.backgroundColor = '#d4941a')}
-                            onMouseLeave={(e) => !isLoading && !isCurrentUser && (e.target.style.backgroundColor = '#faa61a')}
-                          >
-                            {isLoading ? 'Processing...' : 'Remove Middleman'}
-                          </button>
-                        ) : user.role !== 'admin' && (
-                          <button
-                            onClick={() => handleMakeMiddleman(user._id)}
-                            disabled={isLoading || isCurrentUser}
-                            style={{
-                              ...middlemanButtonStyle,
-                              ...(isLoading || isCurrentUser ? disabledButtonStyle : {})
-                            }}
-                            onMouseEnter={(e) => !isLoading && !isCurrentUser && (e.target.style.backgroundColor = '#7c3aed')}
-                            onMouseLeave={(e) => !isLoading && !isCurrentUser && (e.target.style.backgroundColor = '#8b5cf6')}
-                          >
-                            {isLoading ? 'Processing...' : 'Make Middleman'}
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
+                    </div>
+                    <div style={mobileButtonGroupStyle}>
+                      <button
+                        onClick={() => setInspectingUserId(user._id)}
+                        style={{
+                          ...viewUserButtonStyle,
+                          ...(isLoading ? disabledButtonStyle : {})
+                        }}
+                        disabled={isLoading}
+                      >
+                        View as User
+                      </button>
+                      {user.role !== 'admin' && (
+                        <>
+                          {user.banned ? (
+                            <button
+                              onClick={() => handleUnbanClick(user._id, user.discordUsername)}
+                              disabled={isLoading || isCurrentUser}
+                              style={{
+                                ...unbanButtonStyle,
+                                ...(isLoading || isCurrentUser ? disabledButtonStyle : {})
+                              }}
+                            >
+                              {isLoading ? 'Processing...' : 'Unban'}
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleBanClick(user._id, user.discordUsername)}
+                              disabled={isLoading || isCurrentUser}
+                              style={{
+                                ...banButtonStyle,
+                                ...(isLoading || isCurrentUser ? disabledButtonStyle : {})
+                              }}
+                            >
+                              {isLoading ? 'Processing...' : 'Ban'}
+                            </button>
+                          )}
+                          {user.role === 'middleman' ? (
+                            <button
+                              onClick={() => handleRemoveMiddleman(user._id)}
+                              disabled={isLoading || isCurrentUser}
+                              style={{
+                                ...removeMiddlemanButtonStyle,
+                                ...(isLoading || isCurrentUser ? disabledButtonStyle : {})
+                              }}
+                            >
+                              {isLoading ? 'Processing...' : 'Remove Middleman'}
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleMakeMiddleman(user._id)}
+                              disabled={isLoading || isCurrentUser}
+                              style={{
+                                ...middlemanButtonStyle,
+                                ...(isLoading || isCurrentUser ? disabledButtonStyle : {})
+                              }}
+                            >
+                              {isLoading ? 'Processing...' : 'Make Middleman'}
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
+            </div>
+          ) : (
+            <div style={tableContainerStyle}>
+              <table style={tableStyle}>
+                <thead>
+                  <tr>
+                    <th style={{ ...thStyle, width: '15%' }}>Username</th>
+                    <th style={{ ...thStyle, width: '20%' }}>User ID</th>
+                    <th style={{ ...thStyle, width: '10%' }}>Role</th>
+                    <th style={{ ...thStyle, width: '10%' }}>Status</th>
+                    <th style={{ ...thStyle, width: '12%' }}>Registered</th>
+                    <th style={{ ...thStyle, width: '33%' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((user) => {
+                    const isCurrentUser = user._id === currentUser?.userId;
+                    const isLoading = actionLoading[user._id];
+
+                    return (
+                      <tr
+                        key={user._id}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#40444b';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'transparent';
+                        }}
+                      >
+                        <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
+                          <div
+                            style={{
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              maxWidth: '100%'
+                            }}
+                          >
+                            <span style={{ color: '#ffffff', fontWeight: '500' }}>
+                              {user.discordUsername || 'Unknown'}
+                            </span>
+                            {isCurrentUser && (
+                              <span style={{ marginLeft: '8px', fontSize: '12px', color: '#72767d' }}>
+                                (You)
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
+                          <div
+                            style={{
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              maxWidth: '100%',
+                              fontFamily: 'monospace'
+                            }}
+                            title={user._id}
+                          >
+                            <span
+                              style={{
+                                color: '#b8bcc8',
+                                fontSize: '11px'
+                              }}
+                            >
+                              {user._id}
+                            </span>
+                          </div>
+                        </td>
+                        <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
+                          <span style={roleBadgeStyle(user.role)}>
+                            {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                          </span>
+                        </td>
+                        <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
+                          <span style={statusBadgeStyle(user.banned)}>
+                            {user.banned ? 'Banned' : 'Active'}
+                          </span>
+                        </td>
+                        <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
+                          <span style={{ color: '#b8bcc8', fontSize: '13px' }}>
+                            {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+                          </span>
+                        </td>
+                        <td style={{ ...tdStyle, whiteSpace: 'normal', overflow: 'visible' }}>
+                          <div style={buttonGroupStyle}>
+                            <button
+                              onClick={() => setInspectingUserId(user._id)}
+                              style={viewUserButtonStyle}
+                              onMouseEnter={(e) => (e.target.style.backgroundColor = '#4752c4')}
+                              onMouseLeave={(e) => (e.target.style.backgroundColor = '#5865f2')}
+                            >
+                              View as User
+                            </button>
+                            {user.banned ? (
+                              <button
+                                onClick={() => handleUnbanClick(user._id, user.discordUsername)}
+                                disabled={isLoading || isCurrentUser}
+                                style={{
+                                  ...unbanButtonStyle,
+                                  ...(isLoading || isCurrentUser ? disabledButtonStyle : {})
+                                }}
+                                onMouseEnter={(e) =>
+                                  !isLoading &&
+                                  !isCurrentUser &&
+                                  (e.target.style.backgroundColor = '#2d8f4f')
+                                }
+                                onMouseLeave={(e) =>
+                                  !isLoading &&
+                                  !isCurrentUser &&
+                                  (e.target.style.backgroundColor = '#3ba55d')
+                                }
+                              >
+                                {isLoading ? 'Processing...' : 'Unban'}
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleBanClick(user._id, user.discordUsername)}
+                                disabled={isLoading || isCurrentUser || user.role === 'admin'}
+                                style={{
+                                  ...banButtonStyle,
+                                  ...(isLoading || isCurrentUser || user.role === 'admin'
+                                    ? disabledButtonStyle
+                                    : {})
+                                }}
+                                title={
+                                  user.role === 'admin'
+                                    ? 'Cannot ban admin'
+                                    : isCurrentUser
+                                    ? 'Cannot ban yourself'
+                                    : ''
+                                }
+                                onMouseEnter={(e) =>
+                                  !isLoading &&
+                                  !isCurrentUser &&
+                                  user.role !== 'admin' &&
+                                  (e.target.style.backgroundColor = '#c03537')
+                                }
+                                onMouseLeave={(e) =>
+                                  !isLoading &&
+                                  !isCurrentUser &&
+                                  user.role !== 'admin' &&
+                                  (e.target.style.backgroundColor = '#ed4245')
+                                }
+                              >
+                                {isLoading ? 'Processing...' : 'Ban'}
+                              </button>
+                            )}
+
+                            {user.role === 'middleman' ? (
+                              <button
+                                onClick={() => handleRemoveMiddleman(user._id)}
+                                disabled={isLoading || isCurrentUser}
+                                style={{
+                                  ...removeMiddlemanButtonStyle,
+                                  ...(isLoading || isCurrentUser ? disabledButtonStyle : {})
+                                }}
+                                onMouseEnter={(e) =>
+                                  !isLoading &&
+                                  !isCurrentUser &&
+                                  (e.target.style.backgroundColor = '#d4941a')
+                                }
+                                onMouseLeave={(e) =>
+                                  !isLoading &&
+                                  !isCurrentUser &&
+                                  (e.target.style.backgroundColor = '#faa61a')
+                                }
+                              >
+                                {isLoading ? 'Processing...' : 'Remove Middleman'}
+                              </button>
+                            ) : (
+                              user.role !== 'admin' && (
+                                <button
+                                  onClick={() => handleMakeMiddleman(user._id)}
+                                  disabled={isLoading || isCurrentUser}
+                                  style={{
+                                    ...middlemanButtonStyle,
+                                    ...(isLoading || isCurrentUser ? disabledButtonStyle : {})
+                                  }}
+                                  onMouseEnter={(e) =>
+                                    !isLoading &&
+                                    !isCurrentUser &&
+                                    (e.target.style.backgroundColor = '#7c3aed')
+                                  }
+                                  onMouseLeave={(e) =>
+                                    !isLoading &&
+                                    !isCurrentUser &&
+                                    (e.target.style.backgroundColor = '#8b5cf6')
+                                  }
+                                >
+                                  {isLoading ? 'Processing...' : 'Make Middleman'}
+                                </button>
+                              )
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
 
       {/* Confirmation Modal */}

@@ -100,14 +100,23 @@ function Orders() {
 
   const containerStyle = {
     maxWidth: '1200px',
-    margin: '0 auto'
+    margin: '0 auto',
+    padding: isMobile ? '16px' : isTablet ? '20px' : '24px',
+    width: '100%',
+    boxSizing: 'border-box'
   };
 
   const titleStyle = {
     color: '#ffffff',
     fontSize: isMobile ? '24px' : '28px',
     fontWeight: '700',
-    marginBottom: '24px'
+    marginBottom: isMobile ? '8px' : '12px'
+  };
+
+  const subtitleStyle = {
+    color: '#9ca3af',
+    fontSize: isMobile ? '13px' : '14px',
+    marginBottom: isMobile ? '16px' : '20px'
   };
 
   const loadingStyle = {
@@ -241,19 +250,19 @@ function Orders() {
     backgroundColor: '#1e2338',
     border: '1px solid #2d3447',
     borderRadius: '12px',
-    padding: isMobile ? '16px' : '20px',
-    marginBottom: '24px'
+    padding: isMobile ? '14px' : '18px',
+    marginBottom: isMobile ? '16px' : '24px'
   };
 
   const tabsContainerStyle = {
     display: 'flex',
     flexWrap: 'wrap',
     gap: '8px',
-    marginBottom: isMobile ? '16px' : '20px'
+    marginBottom: isMobile ? '12px' : '16px'
   };
 
   const tabStyle = (isActive) => ({
-    padding: isMobile ? '10px 14px' : '12px 20px',
+    padding: isMobile ? '8px 12px' : '10px 16px',
     backgroundColor: isActive ? '#fbbf24' : '#1a1f35',
     color: isActive ? '#0a0e27' : '#b8bcc8',
     border: `1px solid ${isActive ? '#fbbf24' : '#2d3447'}`,
@@ -270,18 +279,19 @@ function Orders() {
     display: 'flex',
     alignItems: 'center',
     gap: '12px',
-    flexWrap: 'wrap'
+    flexWrap: 'wrap',
+    marginTop: isMobile ? '4px' : '8px'
   };
 
   const sortLabelStyle = {
     color: '#b8bcc8',
-    fontSize: '14px',
+    fontSize: isMobile ? '13px' : '14px',
     fontWeight: '500',
     minWidth: '60px'
   };
 
   const sortSelectStyle = {
-    padding: isMobile ? '10px 16px' : '10px 16px',
+    padding: isMobile ? '8px 14px' : '10px 16px',
     backgroundColor: '#1a1f35',
     border: '1px solid #2d3447',
     borderRadius: '8px',
@@ -289,7 +299,7 @@ function Orders() {
     fontSize: isMobile ? '14px' : '14px',
     cursor: 'pointer',
     transition: 'all 0.2s ease',
-    minHeight: isMobile ? '40px' : '40px',
+    minHeight: isMobile ? '38px' : '40px',
     appearance: 'none',
     WebkitAppearance: 'none',
     MozAppearance: 'none',
@@ -300,7 +310,7 @@ function Orders() {
     paddingRight: isMobile ? '36px' : '36px',
     boxSizing: 'border-box',
     outline: 'none',
-    minWidth: isMobile ? '150px' : '180px'
+    minWidth: isMobile ? '150px' : '200px'
   };
 
   if (loading) {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import apiClient from '../../api/axios';
 import { usePolling } from '../../hooks/usePolling';
+import { useResponsive } from '../../hooks/useResponsive';
 
 function SellerRequests() {
   const [requests, setRequests] = useState([]);
@@ -9,6 +10,7 @@ function SellerRequests() {
   const [actionLoading, setActionLoading] = useState({});
   const [actionMessage, setActionMessage] = useState(null);
   const [actionError, setActionError] = useState(null);
+  const { isMobile, isTablet } = useResponsive();
 
   const fetchRequests = async () => {
     try {
@@ -109,44 +111,45 @@ function SellerRequests() {
     return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
-  if (loading) {
-    return (
-      <div style={{ padding: '20px' }}>
-        <h1>Seller Requests</h1>
-        <div>Loading seller requests...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div style={{ padding: '20px' }}>
-        <h1>Seller Requests</h1>
-        <div style={{ color: 'red' }}>Error: {error}</div>
-      </div>
-    );
-  }
-
   const containerStyle = {
-    padding: '20px'
+    maxWidth: '1200px',
+    margin: '0 auto',
+    padding: isMobile ? '16px' : isTablet ? '20px' : '24px',
+    width: '100%',
+    boxSizing: 'border-box'
+  };
+
+  const titleStyle = {
+    color: '#ffffff',
+    fontSize: isMobile ? '24px' : '28px',
+    fontWeight: '700',
+    marginBottom: isMobile ? '8px' : '12px'
+  };
+
+  const subtitleStyle = {
+    color: '#9ca3af',
+    fontSize: isMobile ? '13px' : '14px',
+    marginBottom: isMobile ? '16px' : '20px'
   };
 
   const listStyle = {
     display: 'flex',
     flexDirection: 'column',
-    gap: '16px',
-    marginTop: '20px'
+    gap: isMobile ? '12px' : '16px',
+    marginTop: isMobile ? '12px' : '16px'
   };
 
   const requestCardStyle = {
-    border: '1px solid #ddd',
-    borderRadius: '8px',
-    padding: '20px',
-    backgroundColor: '#fff',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+    border: '1px solid #2d3447',
+    borderRadius: '12px',
+    padding: isMobile ? '14px' : '18px',
+    backgroundColor: '#1e2338',
+    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.45)',
     display: 'flex',
+    flexDirection: isMobile ? 'column' : 'row',
     justifyContent: 'space-between',
-    alignItems: 'center'
+    alignItems: isMobile ? 'flex-start' : 'center',
+    gap: isMobile ? '12px' : '20px'
   };
 
   const requestInfoStyle = {
@@ -154,53 +157,60 @@ function SellerRequests() {
   };
 
   const usernameStyle = {
-    fontSize: '18px',
+    fontSize: isMobile ? '16px' : '18px',
     fontWeight: 'bold',
     marginBottom: '8px',
-    color: '#333'
+    color: '#ffffff'
   };
 
   const detailStyle = {
-    fontSize: '14px',
-    color: '#666',
-    marginBottom: '4px'
+    fontSize: isMobile ? '13px' : '14px',
+    color: '#b8bcc8',
+    marginBottom: '4px',
+    lineHeight: 1.5
   };
 
   const statusBadgeStyle = (status) => ({
-    padding: '6px 12px',
-    borderRadius: '4px',
-    fontSize: '12px',
+    padding: '4px 10px',
+    borderRadius: '9999px',
+    fontSize: '11px',
     fontWeight: '500',
-    color: '#fff',
+    color: '#ffffff',
     backgroundColor: getStatusColor(status),
     marginRight: '12px'
   });
 
   const buttonGroupStyle = {
     display: 'flex',
-    gap: '8px'
+    flexDirection: isMobile ? 'column' : 'row',
+    gap: '8px',
+    width: isMobile ? '100%' : 'auto'
   };
 
   const approveButtonStyle = {
-    padding: '8px 16px',
+    padding: '10px 16px',
     backgroundColor: '#10b981',
     color: 'white',
     border: 'none',
-    borderRadius: '4px',
-    fontSize: '14px',
+    borderRadius: '6px',
+    fontSize: '13px',
     cursor: 'pointer',
-    fontWeight: '500'
+    fontWeight: '600',
+    width: isMobile ? '100%' : 'auto',
+    minHeight: '40px'
   };
 
   const rejectButtonStyle = {
-    padding: '8px 16px',
+    padding: '10px 16px',
     backgroundColor: '#ef4444',
     color: 'white',
     border: 'none',
-    borderRadius: '4px',
-    fontSize: '14px',
+    borderRadius: '6px',
+    fontSize: '13px',
     cursor: 'pointer',
-    fontWeight: '500'
+    fontWeight: '600',
+    width: isMobile ? '100%' : 'auto',
+    minHeight: '40px'
   };
 
   const disabledButtonStyle = {
@@ -210,42 +220,44 @@ function SellerRequests() {
 
   const emptyStateStyle = {
     textAlign: 'center',
-    padding: '60px 20px',
-    color: '#666',
-    backgroundColor: '#fff',
-    borderRadius: '8px',
-    marginTop: '20px',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+    padding: isMobile ? '40px 16px' : '60px 20px',
+    color: '#b8bcc8',
+    backgroundColor: '#1e2338',
+    borderRadius: '12px',
+    marginTop: isMobile ? '16px' : '20px',
+    border: '1px solid #2d3447'
   };
 
   const emptyStateTitleStyle = {
-    fontSize: '24px',
+    fontSize: isMobile ? '20px' : '24px',
     marginBottom: '12px',
-    color: '#333'
+    color: '#ffffff'
   };
 
   const emptyStateTextStyle = {
-    fontSize: '16px'
+    fontSize: isMobile ? '14px' : '16px',
+    lineHeight: 1.6
   };
 
   const messageStyle = {
-    padding: '12px',
-    borderRadius: '4px',
-    marginBottom: '16px'
+    padding: '12px 16px',
+    borderRadius: '8px',
+    marginBottom: '16px',
+    fontSize: '14px'
   };
 
   const successMessageStyle = {
     ...messageStyle,
-    backgroundColor: '#d1fae5',
-    border: '1px solid #86efac',
-    color: '#166534'
+    backgroundColor: '#065f46',
+    border: '1px solid #10b981',
+    color: '#ffffff'
   };
 
   const errorMessageStyle = {
     ...messageStyle,
-    backgroundColor: '#fee2e2',
-    border: '1px solid #fecaca',
-    color: '#991b1b'
+    backgroundColor: '#7f1d1d',
+    border: '1px solid #ef4444',
+    color: '#ffffff'
   };
 
   // Filter to show pending requests first, then others
@@ -257,7 +269,10 @@ function SellerRequests() {
 
   return (
     <div style={containerStyle}>
-      <h1>Seller Requests</h1>
+      <h1 style={titleStyle}>Seller Requests</h1>
+      <p style={subtitleStyle}>
+        Review and approve or reject buyer accounts that want to become sellers on McFleet.
+      </p>
 
       {/* Success/Error Messages */}
       {actionMessage && (
@@ -288,7 +303,8 @@ function SellerRequests() {
                   {request.user?.discordUsername || 'Unknown User'}
                 </div>
                 <div style={detailStyle}>
-                  <strong>Requested:</strong> {new Date(request.createdAt).toLocaleDateString('en-IN', {
+                  <strong>Requested:</strong>{' '}
+                  {new Date(request.createdAt).toLocaleDateString('en-IN', {
                     year: 'numeric',
                     month: 'short',
                     day: 'numeric',
@@ -302,7 +318,16 @@ function SellerRequests() {
                   </div>
                 )}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'flex-end',
+                  gap: '8px',
+                  width: isMobile ? '100%' : 'auto'
+                }}
+              >
                 <span style={statusBadgeStyle(request.status)}>
                   {getStatusLabel(request.status)}
                 </span>

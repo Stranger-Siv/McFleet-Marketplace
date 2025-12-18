@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import apiClient from '../../api/axios';
 import { usePolling } from '../../hooks/usePolling';
+import { useResponsive } from '../../hooks/useResponsive';
 import ConfirmationModal from '../../components/ConfirmationModal';
 
 function Orders() {
@@ -19,6 +20,7 @@ function Orders() {
   const [selectedOrders, setSelectedOrders] = useState(new Set());
   const [bulkMiddleman, setBulkMiddleman] = useState('');
   const [bulkAssigning, setBulkAssigning] = useState(false);
+  const { isMobile, isTablet } = useResponsive();
 
   const fetchOrders = async () => {
     try {
@@ -258,41 +260,25 @@ function Orders() {
     return order.status === 'item_delivered';
   };
 
-  if (loading) {
-    return (
-      <div style={{ padding: '20px' }}>
-        <h1>Order Management</h1>
-        <div>Loading orders...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div style={{ padding: '20px' }}>
-        <h1>Order Management</h1>
-        <div style={{ color: 'red' }}>Error: {error}</div>
-      </div>
-    );
-  }
-
   const containerStyle = {
     maxWidth: '1400px',
     margin: '0 auto',
-    padding: '20px'
+    padding: isMobile ? '16px' : isTablet ? '20px' : '24px',
+    width: '100%',
+    boxSizing: 'border-box'
   };
 
   const titleStyle = {
     color: '#ffffff',
-    fontSize: '28px',
+    fontSize: isMobile ? '24px' : '28px',
     fontWeight: '700',
-    marginBottom: '8px'
+    marginBottom: isMobile ? '8px' : '8px'
   };
 
   const subtitleStyle = {
     color: '#b8bcc8',
-    marginBottom: '20px',
-    fontSize: '14px'
+    marginBottom: isMobile ? '16px' : '20px',
+    fontSize: isMobile ? '13px' : '14px'
   };
 
   const tableContainerStyle = {
@@ -437,13 +423,55 @@ function Orders() {
 
   const emptyStateStyle = {
     textAlign: 'center',
-    padding: '60px 20px',
+    padding: isMobile ? '40px 16px' : '60px 20px',
     color: '#b8bcc8',
     backgroundColor: '#1e2338',
     border: '1px solid #2d3447',
     borderRadius: '12px',
     marginTop: '20px',
     boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4)'
+  };
+
+  // Mobile card layout styles
+  const mobileCardListStyle = {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px',
+    marginTop: '12px'
+  };
+
+  const mobileCardStyle = {
+    backgroundColor: '#1e2338',
+    border: '1px solid #2d3447',
+    borderRadius: '12px',
+    padding: '14px',
+    boxShadow: '0 4px 16px rgba(0,0,0,0.45)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px'
+  };
+
+  const mobileRowStyle = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '8px',
+    fontSize: '13px',
+    color: '#e5e7eb'
+  };
+
+  const mobileLabelStyle = {
+    color: '#9ca3af',
+    fontWeight: 500,
+    marginRight: '6px'
+  };
+
+  const mobileButtonRowStyle = {
+    marginTop: '8px',
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '8px',
+    justifyContent: 'flex-end'
   };
 
   return (
@@ -466,8 +494,8 @@ function Orders() {
         </div>
       )}
 
-      {/* Bulk Action Bar */}
-      {selectedOrders.size > 0 && (
+      {/* Bulk Action Bar (desktop/tablet only) */}
+      {selectedOrders.size > 0 && !isMobile && (
         <div style={{
           backgroundColor: '#1e2338',
           border: '1px solid #2d3447',
@@ -579,6 +607,89 @@ function Orders() {
             No active orders found
           </div>
         </div>
+      ) : isMobile ? (
+        <div style={mobileCardListStyle}>
+          {orders.map((order) => {
+            const isLoading = actionLoading[order._id];
+            const canAssign = canAssignMiddleman(order);
+            const canComplete = canCompleteOrder(order);
+
+            return (
+              <div key={order._id} style={mobileCardStyle}>
+                <div style={mobileRowStyle}>
+                  <div style={{ fontWeight: '600', color: '#ffffff' }}>
+                    {order.listing?.title || 'Unknown'}
+                  </div>
+                  <span style={statusBadgeStyle(order.status)}>
+                    {getStatusLabel(order.status)}
+                  </span>
+                </div>
+                <div style={mobileRowStyle}>
+                  <span style={mobileLabelStyle}>Order ID</span>
+                  <span
+                    style={{
+                      fontFamily: 'monospace',
+                      fontSize: '11px',
+                      color: '#9ca3af',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {order._id}
+                  </span>
+                </div>
+                <div style={mobileRowStyle}>
+                  <span style={mobileLabelStyle}>Buyer</span>
+                  <span>{order.buyer?.discordUsername || 'Unknown'}</span>
+                </div>
+                <div style={mobileRowStyle}>
+                  <span style={mobileLabelStyle}>Seller</span>
+                  <span>{order.seller?.discordUsername || 'Unknown'}</span>
+                </div>
+                <div style={mobileRowStyle}>
+                  <span style={mobileLabelStyle}>Middleman</span>
+                  <span style={{ fontSize: '12px', color: '#9ca3af' }}>
+                    {order.middleman?.discordUsername || 'Not assigned'}
+                  </span>
+                </div>
+                <div style={mobileButtonRowStyle}>
+                  <button
+                    onClick={() => navigate(`/admin/orders/${order._id}`)}
+                    style={{
+                      ...buttonStyle,
+                      backgroundColor: '#3b82f6',
+                      color: '#ffffff'
+                    }}
+                  >
+                    View Details
+                  </button>
+                  {canAssign && !order.middleman && (
+                    <button
+                      onClick={() => setShowAssignModal(order._id)}
+                      disabled={isLoading}
+                      style={assignButtonStyle}
+                    >
+                      {isLoading ? 'Assigning...' : 'Assign Middleman'}
+                    </button>
+                  )}
+                  {canComplete && (
+                    <button
+                      onClick={() => handleCompleteOrderClick(order._id)}
+                      disabled={isLoading}
+                      style={{
+                        ...completeButtonStyle,
+                        ...(isLoading ? disabledButtonStyle : {})
+                      }}
+                    >
+                      {isLoading ? 'Processing...' : 'Complete Order'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       ) : (
         <div style={tableContainerStyle}>
           <table style={tableStyle}>
@@ -587,8 +698,10 @@ function Orders() {
                 <th style={{ ...thStyle, width: '40px', textAlign: 'center' }}>
                   <input
                     type="checkbox"
-                    checked={orders.filter(o => canAssignMiddleman(o)).length > 0 && 
-                             selectedOrders.size === orders.filter(o => canAssignMiddleman(o)).length}
+                    checked={
+                      orders.filter((o) => canAssignMiddleman(o)).length > 0 &&
+                      selectedOrders.size === orders.filter((o) => canAssignMiddleman(o)).length
+                    }
                     onChange={handleSelectAll}
                     style={{
                       width: '18px',
@@ -613,9 +726,12 @@ function Orders() {
                 const canSelect = canAssignMiddleman(order);
 
                 return (
-                  <tr key={order._id} style={{
-                    backgroundColor: isSelected ? '#252b42' : 'transparent'
-                  }}>
+                  <tr
+                    key={order._id}
+                    style={{
+                      backgroundColor: isSelected ? '#252b42' : 'transparent'
+                    }}
+                  >
                     <td style={{ ...tdStyle, textAlign: 'center', width: '40px' }}>
                       {canSelect && (
                         <input

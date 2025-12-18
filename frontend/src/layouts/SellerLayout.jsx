@@ -176,10 +176,10 @@ function SellerLayout() {
             }} />
           </button>
         )}
-        
+
         <div style={navLinksStyle}>
-          <Link 
-            to="/seller/dashboard" 
+          <Link
+            to="/seller/dashboard"
             style={{
               ...(isActive('/seller/dashboard') ? activeLinkStyle : linkStyle),
               width: isMobile ? '100%' : 'auto',
@@ -192,8 +192,8 @@ function SellerLayout() {
           >
             Dashboard
           </Link>
-          <Link 
-            to="/seller/create-listing" 
+          <Link
+            to="/seller/create-listing"
             style={{
               ...(isActive('/seller/create-listing') ? activeLinkStyle : linkStyle),
               width: isMobile ? '100%' : 'auto',
@@ -206,8 +206,8 @@ function SellerLayout() {
           >
             Create Listing
           </Link>
-          <Link 
-            to="/seller/listings" 
+          <Link
+            to="/seller/listings"
             style={{
               ...(isActive('/seller/listings') ? activeLinkStyle : linkStyle),
               width: isMobile ? '100%' : 'auto',
@@ -220,8 +220,8 @@ function SellerLayout() {
           >
             My Listings
           </Link>
-          <Link 
-            to="/seller/faq" 
+          <Link
+            to="/seller/faq"
             style={{
               ...(isActive('/seller/faq') ? activeLinkStyle : linkStyle),
               width: isMobile ? '100%' : 'auto',
@@ -234,8 +234,8 @@ function SellerLayout() {
           >
             FAQ
           </Link>
-          <Link 
-            to="/seller/orders" 
+          <Link
+            to="/seller/orders"
             style={{
               ...(isActive('/seller/orders') ? activeLinkStyle : linkStyle),
               width: isMobile ? '100%' : 'auto',
@@ -248,8 +248,8 @@ function SellerLayout() {
           >
             Orders
           </Link>
-          <Link 
-            to="/seller/transactions" 
+          <Link
+            to="/seller/transactions"
             style={{
               ...(isActive('/seller/transactions') ? activeLinkStyle : linkStyle),
               width: isMobile ? '100%' : 'auto',
@@ -262,36 +262,81 @@ function SellerLayout() {
           >
             Transactions
           </Link>
+          {isMobile && (
+            <>
+              <div
+                style={{
+                  ...userBadgeStyle,
+                  width: '100%',
+                  justifyContent: 'flex-start',
+                  marginTop: '8px'
+                }}
+              >
+                <span
+                  style={{
+                    color: '#ffffff',
+                    fontWeight: '500',
+                    fontSize: '14px'
+                  }}
+                >
+                  {user?.discordUsername || 'Seller'}
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  handleLogout();
+                  setMobileMenuOpen(false);
+                }}
+                style={{
+                  ...logoutButtonStyle,
+                  width: '100%',
+                  marginTop: '8px'
+                }}
+                onMouseEnter={(e) => !isMobile && (e.target.style.backgroundColor = '#dc2626')}
+                onMouseLeave={(e) => !isMobile && (e.target.style.backgroundColor = '#ef4444')}
+              >
+                Logout
+              </button>
+            </>
+          )}
         </div>
-        
-        <div style={{
-          ...userInfoStyle,
-          flexDirection: isMobile ? 'column' : 'row',
-          width: isMobile ? '100%' : 'auto',
-          order: isMobile ? 2 : 0
-        }}>
-          <div style={{
-            ...userBadgeStyle,
-            width: isMobile ? '100%' : 'auto',
-            justifyContent: isMobile ? 'flex-start' : 'center'
-          }}>
-            <span style={{ color: '#ffffff', fontWeight: '500', fontSize: '14px' }}>{user?.discordUsername || 'Seller'}</span>
-          </div>
-          <button 
-            onClick={() => {
-              handleLogout();
-              setMobileMenuOpen(false);
-            }}
+
+        {!isMobile && (
+          <div
             style={{
-              ...logoutButtonStyle,
-              width: isMobile ? '100%' : 'auto'
+              ...userInfoStyle
             }}
-            onMouseEnter={(e) => !isMobile && (e.target.style.backgroundColor = '#dc2626')}
-            onMouseLeave={(e) => !isMobile && (e.target.style.backgroundColor = '#ef4444')}
           >
-            Logout
-          </button>
-        </div>
+            <div
+              style={{
+                ...userBadgeStyle
+              }}
+            >
+              <span
+                style={{
+                  color: '#ffffff',
+                  fontWeight: '500',
+                  fontSize: '14px'
+                }}
+              >
+                {user?.discordUsername || 'Seller'}
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                handleLogout();
+                setMobileMenuOpen(false);
+              }}
+              style={{
+                ...logoutButtonStyle
+              }}
+              onMouseEnter={(e) => (e.target.style.backgroundColor = '#dc2626')}
+              onMouseLeave={(e) => (e.target.style.backgroundColor = '#ef4444')}
+            >
+              Logout
+            </button>
+          </div>
+        )}
       </nav>
       {/* Mobile Menu Overlay */}
       {isMobile && mobileMenuOpen && (

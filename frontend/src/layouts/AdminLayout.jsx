@@ -209,36 +209,82 @@ function AdminLayout() {
               {label}
             </Link>
           ))}
+
+          {isMobile && (
+            <>
+              <div
+                style={{
+                  ...userBadgeStyle,
+                  width: '100%',
+                  justifyContent: 'flex-start',
+                  marginTop: '8px'
+                }}
+              >
+                <span
+                  style={{
+                    color: '#ffffff',
+                    fontWeight: '500',
+                    fontSize: '14px'
+                  }}
+                >
+                  {user?.discordUsername || 'Admin'}
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  handleLogout();
+                  setMobileMenuOpen(false);
+                }}
+                style={{
+                  ...logoutButtonStyle,
+                  width: '100%',
+                  marginTop: '8px'
+                }}
+                onMouseEnter={(e) => !isMobile && (e.target.style.backgroundColor = '#dc2626')}
+                onMouseLeave={(e) => !isMobile && (e.target.style.backgroundColor = '#ef4444')}
+              >
+                Logout
+              </button>
+            </>
+          )}
         </div>
-        
-        <div style={{
-          ...userInfoStyle,
-          flexDirection: isMobile ? 'column' : 'row',
-          width: isMobile ? '100%' : 'auto',
-          order: isMobile ? 2 : 0
-        }}>
-          <div style={{
-            ...userBadgeStyle,
-            width: isMobile ? '100%' : 'auto',
-            justifyContent: isMobile ? 'flex-start' : 'center'
-          }}>
-            <span style={{ color: '#ffffff', fontWeight: '500', fontSize: '14px' }}>{user?.discordUsername || 'Admin'}</span>
-          </div>
-          <button 
-            onClick={() => {
-              handleLogout();
-              setMobileMenuOpen(false);
-            }}
+
+        {!isMobile && (
+          <div
             style={{
-              ...logoutButtonStyle,
-              width: isMobile ? '100%' : 'auto'
+              ...userInfoStyle
             }}
-            onMouseEnter={(e) => !isMobile && (e.target.style.backgroundColor = '#dc2626')}
-            onMouseLeave={(e) => !isMobile && (e.target.style.backgroundColor = '#ef4444')}
           >
-            Logout
-          </button>
-        </div>
+            <div
+              style={{
+                ...userBadgeStyle
+              }}
+            >
+              <span
+                style={{
+                  color: '#ffffff',
+                  fontWeight: '500',
+                  fontSize: '14px'
+                }}
+              >
+                {user?.discordUsername || 'Admin'}
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                handleLogout();
+                setMobileMenuOpen(false);
+              }}
+              style={{
+                ...logoutButtonStyle
+              }}
+              onMouseEnter={(e) => (e.target.style.backgroundColor = '#dc2626')}
+              onMouseLeave={(e) => (e.target.style.backgroundColor = '#ef4444')}
+            >
+              Logout
+            </button>
+          </div>
+        )}
       </nav>
       {/* Mobile Menu Overlay */}
       {isMobile && mobileMenuOpen && (

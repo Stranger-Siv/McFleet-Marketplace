@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import apiClient from '../../api/axios';
 import { usePolling } from '../../hooks/usePolling';
+import { useResponsive } from '../../hooks/useResponsive';
 import SkeletonTableRow from '../../components/skeletons/SkeletonTableRow';
 import EditListingModal from '../../components/EditListingModal';
 import LoadingSpinner from '../../components/LoadingSpinner';
@@ -19,6 +20,8 @@ function MyListings() {
   const [actionError, setActionError] = useState(null);
   const [listingsWithActiveOrders, setListingsWithActiveOrders] = useState(new Set());
   const [checkingOrders, setCheckingOrders] = useState(false);
+  const { isMobile, isTablet } = useResponsive();
+  const isSmallScreen = isMobile || isTablet;
 
   // Check for active orders for all listings
   const checkActiveOrdersForListings = async () => {
@@ -208,15 +211,18 @@ function MyListings() {
   };
 
   const containerStyle = {
-    maxWidth: '1200px',
-    margin: '0 auto'
+    maxWidth: isSmallScreen ? '100%' : '1200px',
+    margin: '0 auto',
+    padding: isMobile ? '16px' : isTablet ? '20px' : '24px',
+    width: '100%',
+    boxSizing: 'border-box'
   };
 
   const titleStyle = {
     color: '#ffffff',
-    fontSize: '28px',
+    fontSize: isMobile ? '24px' : '28px',
     fontWeight: '700',
-    marginBottom: '24px'
+    marginBottom: isMobile ? '20px' : '24px'
   };
 
   const contentStyle = {
@@ -278,52 +284,56 @@ function MyListings() {
   const listStyle = {
     display: 'flex',
     flexDirection: 'column',
-    gap: '16px',
-    marginTop: '20px'
+    gap: isMobile ? '12px' : '16px',
+    marginTop: isMobile ? '16px' : '20px'
   };
 
   const listingCardStyle = {
     border: '1px solid #2d3447',
     borderRadius: '12px',
-    padding: '20px',
+    padding: isMobile ? '16px' : '20px',
     backgroundColor: '#1e2338',
     boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4)',
     display: 'flex',
+    flexDirection: isSmallScreen ? 'column' : 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    transition: 'all 0.3s ease',
-    marginBottom: '16px'
+    alignItems: isSmallScreen ? 'stretch' : 'center',
+    transition: 'all 0.3s ease'
   };
 
   const listingInfoStyle = {
-    flex: 1
+    flex: 1,
+    minWidth: 0,
+    marginBottom: isSmallScreen ? '12px' : 0
   };
 
   const listingTitleStyle = {
-    fontSize: '18px',
+    fontSize: isMobile ? '16px' : '18px',
     fontWeight: '600',
     marginBottom: '8px',
-    color: '#ffffff'
+    color: '#ffffff',
+    lineHeight: 1.4
   };
 
   const detailStyle = {
-    fontSize: '14px',
+    fontSize: isMobile ? '13px' : '14px',
     color: '#b8bcc8',
-    marginBottom: '4px'
+    marginBottom: '4px',
+    lineHeight: 1.5
   };
 
   const statusBadgeStyle = (status) => ({
     padding: '6px 12px',
-    borderRadius: '4px',
-    fontSize: '14px',
-    fontWeight: '500',
-    color: '#fff',
+    borderRadius: '9999px',
+    fontSize: '12px',
+    fontWeight: '600',
+    color: '#ffffff',
     backgroundColor: getStatusColor(status)
   });
 
   const emptyStateStyle = {
     textAlign: 'center',
-    padding: '60px 20px',
+    padding: isMobile ? '40px 16px' : '60px 20px',
     color: '#b8bcc8',
     backgroundColor: '#1e2338',
     borderRadius: '12px',
@@ -331,13 +341,14 @@ function MyListings() {
   };
 
   const emptyStateTitleStyle = {
-    fontSize: '24px',
+    fontSize: isMobile ? '20px' : '24px',
     marginBottom: '12px',
     color: '#ffffff'
   };
 
   const emptyStateTextStyle = {
-    fontSize: '16px'
+    fontSize: isMobile ? '14px' : '16px',
+    lineHeight: 1.6
   };
 
   return (
@@ -357,16 +368,6 @@ function MyListings() {
             <div 
               key={listing._id} 
               style={listingCardStyle}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#252b42';
-                e.currentTarget.style.transform = 'translateX(4px)';
-                e.currentTarget.style.boxShadow = '0 8px 32px rgba(0, 0, 0, 0.5)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#1e2338';
-                e.currentTarget.style.transform = 'translateX(0)';
-                e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.4)';
-              }}
             >
               <div style={listingInfoStyle}>
                 <div style={listingTitleStyle}>{listing.title}</div>
@@ -376,20 +377,21 @@ function MyListings() {
                 <div style={detailStyle}>
                   <strong>Stock:</strong> {
                     editingStock === listing._id ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
                         <input
                           type="number"
                           min="1"
                           value={stockValue}
                           onChange={(e) => setStockValue(e.target.value)}
                           style={{
-                            width: '80px',
-                            padding: '6px 10px',
+                            width: isMobile ? '100%' : '80px',
+                            padding: '8px 10px',
                             backgroundColor: '#1a1f35',
                             border: '1px solid #2d3447',
                             borderRadius: '6px',
                             color: '#ffffff',
-                            fontSize: '14px'
+                            fontSize: '14px',
+                            boxSizing: 'border-box'
                           }}
                           onKeyPress={(e) => {
                             if (e.key === 'Enter') {
@@ -406,12 +408,12 @@ function MyListings() {
                         <button
                           onClick={() => handleUpdateStock(listing._id, parseInt(stockValue))}
                           style={{
-                            padding: '6px 12px',
+                            padding: '8px 14px',
                             backgroundColor: '#10b981',
                             color: '#ffffff',
                             border: 'none',
                             borderRadius: '6px',
-                            fontSize: '12px',
+                            fontSize: '13px',
                             fontWeight: '600',
                             cursor: 'pointer'
                           }}
@@ -421,12 +423,12 @@ function MyListings() {
                         <button
                           onClick={cancelEditingStock}
                           style={{
-                            padding: '6px 12px',
+                            padding: '8px 14px',
                             backgroundColor: '#6b7280',
                             color: '#ffffff',
                             border: 'none',
                             borderRadius: '6px',
-                            fontSize: '12px',
+                            fontSize: '13px',
                             fontWeight: '600',
                             cursor: 'pointer'
                           }}
@@ -445,7 +447,7 @@ function MyListings() {
                       onClick={() => startEditingStock(listing)}
                       style={{
                         marginLeft: '12px',
-                        padding: '4px 10px',
+                        padding: '6px 10px',
                         backgroundColor: 'transparent',
                         color: '#fbbf24',
                         border: '1px solid #fbbf24',
@@ -492,28 +494,44 @@ function MyListings() {
                   </div>
                 )}
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', alignItems: 'flex-end' }}>
-                <span style={statusBadgeStyle(listing.status)}>
-                  {getStatusLabel(listing.status)}
-                </span>
-                <div style={{ display: 'flex', gap: '8px' }}>
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: isSmallScreen ? 'column' : 'column',
+                gap: '10px', 
+                alignItems: isSmallScreen ? 'stretch' : 'flex-end',
+                minWidth: isSmallScreen ? '100%' : '220px',
+                marginLeft: isSmallScreen ? 0 : '24px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: isSmallScreen ? 'flex-start' : 'flex-end' }}>
+                  <span style={statusBadgeStyle(listing.status)}>
+                    {getStatusLabel(listing.status)}
+                  </span>
+                </div>
+                <div style={{ 
+                  display: 'flex', 
+                  flexDirection: isSmallScreen ? 'column' : 'row', 
+                  gap: '8px',
+                  width: '100%'
+                }}>
                   <button
                     onClick={() => handleEditClick(listing)}
                     disabled={pausingListing === listing._id || listing.status === 'disabled_by_admin' || listingsWithActiveOrders.has(listing._id)}
                     title={listingsWithActiveOrders.has(listing._id) ? 'Cannot edit: Listing has active or pending orders' : listing.status === 'disabled_by_admin' ? 'Cannot edit: Listing disabled by admin' : 'Edit listing'}
                     style={{
-                      padding: '8px 16px',
+                      padding: '10px 16px',
                       backgroundColor: '#3b82f6',
                       color: '#ffffff',
                       border: 'none',
                       borderRadius: '6px',
-                      fontSize: '12px',
+                      fontSize: '13px',
                       fontWeight: '600',
                       cursor: (pausingListing === listing._id || listing.status === 'disabled_by_admin' || listingsWithActiveOrders.has(listing._id)) ? 'not-allowed' : 'pointer',
                       opacity: (pausingListing === listing._id || listing.status === 'disabled_by_admin' || listingsWithActiveOrders.has(listing._id)) ? 0.6 : 1,
                       textTransform: 'uppercase',
                       letterSpacing: '0.5px',
-                      position: 'relative'
+                      position: 'relative',
+                      minHeight: '44px',
+                      flex: 1
                     }}
                     onMouseEnter={(e) => {
                       if (pausingListing !== listing._id && listing.status !== 'disabled_by_admin' && !listingsWithActiveOrders.has(listing._id)) {
@@ -534,12 +552,12 @@ function MyListings() {
                       disabled={pausingListing === listing._id || listingsWithActiveOrders.has(listing._id)}
                       title={listingsWithActiveOrders.has(listing._id) ? 'Cannot pause/resume: Listing has active or pending orders' : listing.status === 'paused' ? 'Resume listing' : 'Pause listing'}
                       style={{
-                        padding: '8px 16px',
+                        padding: '10px 16px',
                         backgroundColor: listing.status === 'paused' ? '#10b981' : '#f59e0b',
                         color: '#ffffff',
                         border: 'none',
                         borderRadius: '6px',
-                        fontSize: '12px',
+                        fontSize: '13px',
                         fontWeight: '600',
                         cursor: (pausingListing === listing._id || listingsWithActiveOrders.has(listing._id)) ? 'not-allowed' : 'pointer',
                         opacity: (pausingListing === listing._id || listingsWithActiveOrders.has(listing._id)) ? 0.6 : 1,
@@ -547,7 +565,10 @@ function MyListings() {
                         letterSpacing: '0.5px',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '6px'
+                        justifyContent: 'center',
+                        gap: '6px',
+                        minHeight: '44px',
+                        flex: 1
                       }}
                       onMouseEnter={(e) => {
                         if (pausingListing !== listing._id && !listingsWithActiveOrders.has(listing._id)) {
@@ -576,12 +597,12 @@ function MyListings() {
                       disabled={deletingListing === listing._id || listingsWithActiveOrders.has(listing._id)}
                       title={listingsWithActiveOrders.has(listing._id) ? 'Cannot delete: Listing has active or pending orders' : 'Delete listing'}
                       style={{
-                        padding: '8px 16px',
+                        padding: '10px 16px',
                         backgroundColor: '#ef4444',
                         color: '#ffffff',
                         border: 'none',
                         borderRadius: '6px',
-                        fontSize: '12px',
+                        fontSize: '13px',
                         fontWeight: '600',
                         cursor: (deletingListing === listing._id || listingsWithActiveOrders.has(listing._id)) ? 'not-allowed' : 'pointer',
                         opacity: (deletingListing === listing._id || listingsWithActiveOrders.has(listing._id)) ? 0.6 : 1,
@@ -589,7 +610,10 @@ function MyListings() {
                         letterSpacing: '0.5px',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '6px'
+                        justifyContent: 'center',
+                        gap: '6px',
+                        minHeight: '44px',
+                        flex: 1
                       }}
                       onMouseEnter={(e) => {
                         if (deletingListing !== listing._id && !listingsWithActiveOrders.has(listing._id)) {

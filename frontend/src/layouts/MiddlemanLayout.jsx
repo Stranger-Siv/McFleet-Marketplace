@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useResponsive } from '../hooks/useResponsive';
 
 function MiddlemanLayout() {
   const { user, logout } = useAuth();
-  const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { isMobile, isTablet } = useResponsive();
@@ -46,29 +45,6 @@ function MiddlemanLayout() {
     backgroundClip: 'text'
   };
 
-  const navLinksStyle = {
-    display: 'flex',
-    gap: '8px',
-    alignItems: 'center'
-  };
-
-  const linkStyle = {
-    color: '#b8bcc8',
-    textDecoration: 'none',
-    padding: '10px 16px',
-    borderRadius: '8px',
-    transition: 'all 0.2s ease',
-    fontSize: '14px',
-    fontWeight: '500'
-  };
-
-  const activeLinkStyle = {
-    ...linkStyle,
-    color: '#ffffff',
-    backgroundColor: '#1e2338',
-    border: '1px solid #2d3447'
-  };
-
   const userInfoStyle = {
     display: 'flex',
     alignItems: 'center',
@@ -97,12 +73,48 @@ function MiddlemanLayout() {
     transition: 'all 0.2s ease'
   };
 
-  const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + '/');
+  const hamburgerButtonStyle = {
+    display: isMobile ? 'flex' : 'none',
+    flexDirection: 'column',
+    gap: '4px',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    padding: '8px',
+    borderRadius: '6px',
+    alignItems: 'center',
+    justifyContent: 'center'
+  };
+
+  const hamburgerLineStyle = {
+    width: '20px',
+    height: '2px',
+    backgroundColor: '#ffffff',
+    borderRadius: '2px',
+    transition: 'all 0.3s ease'
+  };
+
+  const navActionsStyle = {
+    display: isMobile ? (mobileMenuOpen ? 'flex' : 'none') : 'flex',
+    flexDirection: isMobile ? 'column' : 'row',
+    alignItems: isMobile ? 'stretch' : 'center',
+    gap: isMobile ? '8px' : '16px',
+    position: isMobile ? 'absolute' : 'relative',
+    top: isMobile ? '100%' : 'auto',
+    right: isMobile ? 0 : 'auto',
+    left: isMobile ? 0 : 'auto',
+    backgroundColor: isMobile ? '#131829' : 'transparent',
+    padding: isMobile ? '16px' : 0,
+    boxShadow: isMobile ? '0 4px 16px rgba(0, 0, 0, 0.4)' : 'none',
+    borderBottom: isMobile ? '1px solid #2d3447' : 'none',
+    width: isMobile ? '100%' : 'auto',
+    zIndex: isMobile ? 999 : 'auto'
+  };
 
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #0a0e27 0%, #131829 100%)' }}>
       <nav style={navStyle}>
-        <Link to="/middleman/orders" style={logoStyle}>
+        <Link to="/middleman/orders" style={logoStyle} onClick={() => setMobileMenuOpen(false)}>
           <div style={{
             width: '32px',
             height: '32px',
@@ -119,45 +131,59 @@ function MiddlemanLayout() {
           </div>
           <span style={{ ...logoTextStyle, display: isMobile ? 'none' : 'inline' }}>McFleet Middleman</span>
         </Link>
-        
-        <div style={navLinksStyle}>
-          <Link 
-            to="/middleman/orders" 
-            style={{
-              ...(isActive('/middleman/orders') ? activeLinkStyle : linkStyle),
-              fontSize: isMobile ? '13px' : linkStyle.fontSize,
-              padding: isMobile ? '8px 12px' : linkStyle.padding
-            }}
-            onMouseEnter={(e) => !isActive('/middleman/orders') && !isMobile && (e.target.style.color = '#ffffff')}
-            onMouseLeave={(e) => !isActive('/middleman/orders') && !isMobile && (e.target.style.color = '#b8bcc8')}
+        {isMobile && (
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            style={hamburgerButtonStyle}
+            aria-label="Toggle menu"
           >
-            {isMobile ? 'Orders' : 'Assigned Orders'}
-          </Link>
-        </div>
-        
-        <div style={{
-          ...userInfoStyle,
-          flexDirection: isMobile ? 'column' : 'row',
-          gap: isMobile ? '8px' : userInfoStyle.gap
-        }}>
-          <div style={{
-            ...userBadgeStyle,
-            padding: isMobile ? '6px 10px' : userBadgeStyle.padding
-          }}>
-            <span style={{ 
-              color: '#ffffff', 
-              fontWeight: '500', 
-              fontSize: isMobile ? '12px' : '14px' 
-            }}>
+            <div
+              style={{
+                ...hamburgerLineStyle,
+                transform: mobileMenuOpen ? 'rotate(45deg) translate(5px, 5px)' : 'none'
+              }}
+            />
+            <div
+              style={{
+                ...hamburgerLineStyle,
+                opacity: mobileMenuOpen ? 0 : 1
+              }}
+            />
+            <div
+              style={{
+                ...hamburgerLineStyle,
+                transform: mobileMenuOpen ? 'rotate(-45deg) translate(5px, -5px)' : 'none'
+              }}
+            />
+          </button>
+        )}
+
+        <div style={navActionsStyle}>
+          <div
+            style={{
+              ...userBadgeStyle,
+              width: isMobile ? '100%' : 'auto',
+              justifyContent: isMobile ? 'flex-start' : 'center'
+            }}
+          >
+            <span
+              style={{
+                color: '#ffffff',
+                fontWeight: '500',
+                fontSize: '14px'
+              }}
+            >
               {user?.discordUsername || 'Middleman'}
             </span>
           </div>
-          <button 
-            onClick={handleLogout} 
+          <button
+            onClick={() => {
+              handleLogout();
+              setMobileMenuOpen(false);
+            }}
             style={{
               ...logoutButtonStyle,
-              padding: isMobile ? '6px 12px' : logoutButtonStyle.padding,
-              fontSize: isMobile ? '12px' : logoutButtonStyle.fontSize
+              width: isMobile ? '100%' : 'auto'
             }}
             onMouseEnter={(e) => !isMobile && (e.target.style.backgroundColor = '#dc2626')}
             onMouseLeave={(e) => !isMobile && (e.target.style.backgroundColor = '#ef4444')}

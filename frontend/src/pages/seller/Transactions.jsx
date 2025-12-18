@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
 import apiClient from '../../api/axios';
 import { usePolling } from '../../hooks/usePolling';
+import { useResponsive } from '../../hooks/useResponsive';
 import SkeletonTableRow from '../../components/skeletons/SkeletonTableRow';
 
 function Transactions() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { isMobile, isTablet } = useResponsive();
+  const isSmallScreen = isMobile || isTablet;
 
   const fetchTransactions = async () => {
     try {
@@ -65,15 +68,18 @@ function Transactions() {
   };
 
   const containerStyle = {
-    maxWidth: '1200px',
-    margin: '0 auto'
+    maxWidth: isSmallScreen ? '100%' : '1200px',
+    margin: '0 auto',
+    padding: isMobile ? '16px' : isTablet ? '20px' : '24px',
+    width: '100%',
+    boxSizing: 'border-box'
   };
 
   const titleStyle = {
     color: '#ffffff',
-    fontSize: '28px',
+    fontSize: isMobile ? '24px' : '28px',
     fontWeight: '700',
-    marginBottom: '24px'
+    marginBottom: isMobile ? '20px' : '24px'
   };
 
   const contentStyle = {
@@ -134,7 +140,7 @@ function Transactions() {
 
   const tableContainerStyle = {
     overflowX: 'auto',
-    marginTop: '20px'
+    marginTop: isMobile ? '16px' : '20px'
   };
 
   const tableStyle = {
@@ -149,7 +155,7 @@ function Transactions() {
 
   const thStyle = {
     backgroundColor: '#131829',
-    padding: '16px',
+    padding: isMobile ? '12px' : '16px',
     textAlign: 'left',
     fontWeight: '600',
     color: '#b8bcc8',
@@ -160,7 +166,7 @@ function Transactions() {
   };
 
   const tdStyle = {
-    padding: '16px',
+    padding: isMobile ? '12px' : '16px',
     borderBottom: '1px solid #2d3447',
     color: '#ffffff',
     fontSize: '14px',
@@ -179,7 +185,7 @@ function Transactions() {
 
   const emptyStateStyle = {
     textAlign: 'center',
-    padding: '60px 20px',
+    padding: isMobile ? '40px 16px' : '60px 20px',
     color: '#b8bcc8',
     backgroundColor: '#1e2338',
     borderRadius: '12px',
@@ -188,13 +194,50 @@ function Transactions() {
   };
 
   const emptyStateTitleStyle = {
-    fontSize: '24px',
+    fontSize: isMobile ? '20px' : '24px',
     marginBottom: '12px',
     color: '#ffffff'
   };
 
   const emptyStateTextStyle = {
-    fontSize: '16px'
+    fontSize: isMobile ? '14px' : '16px',
+    lineHeight: 1.6
+  };
+
+  const cardListStyle = {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: isMobile ? '12px' : '16px',
+    marginTop: isMobile ? '16px' : '20px'
+  };
+
+  const transactionCardStyle = {
+    border: '1px solid #2d3447',
+    borderRadius: '12px',
+    padding: isMobile ? '14px' : '18px',
+    backgroundColor: '#1e2338',
+    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px'
+  };
+
+  const cardRowStyle = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    fontSize: isMobile ? '13px' : '14px',
+    color: '#b8bcc8'
+  };
+
+  const cardLabelStyle = {
+    fontWeight: 500,
+    marginRight: '8px'
+  };
+
+  const cardValueStrongStyle = {
+    color: '#ffffff',
+    fontWeight: 600
   };
 
   return (
@@ -209,49 +252,82 @@ function Transactions() {
           </div>
         </div>
       ) : (
-        <div style={{ ...tableContainerStyle, ...contentStyle }}>
-          <table style={tableStyle}>
-            <thead>
-              <tr>
-                <th style={thStyle}>Item Title</th>
-                <th style={thStyle}>Item Price</th>
-                <th style={thStyle}>Seller Payout</th>
-                <th style={thStyle}>Status</th>
-                <th style={thStyle}>Date</th>
-              </tr>
-            </thead>
-            <tbody>
+        <>
+          {isSmallScreen ? (
+            <div style={{ ...cardListStyle, ...contentStyle }}>
               {transactions.map((transaction) => (
-                <tr 
-                  key={transaction._id}
-                  style={{
-                    transition: 'background-color 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#252b42';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#1e2338';
-                  }}
-                >
-                  <td style={tdStyle}>
-                    <strong>{getItemTitle(transaction)}</strong>
-                  </td>
-                  <td style={tdStyle}>{formatCurrency(transaction.itemPrice)}</td>
-                  <td style={tdStyle}>
-                    <strong>{formatCurrency(transaction.sellerPayout)}</strong>
-                  </td>
-                  <td style={tdStyle}>
+                <div key={transaction._id} style={transactionCardStyle}>
+                  <div style={{ ...cardRowStyle, marginBottom: '4px' }}>
+                    <span style={{ ...cardLabelStyle, color: '#9ca3af' }}>Item</span>
+                    <span style={cardValueStrongStyle}>{getItemTitle(transaction)}</span>
+                  </div>
+                  <div style={cardRowStyle}>
+                    <span style={cardLabelStyle}>Item Price</span>
+                    <span>{formatCurrency(transaction.itemPrice)}</span>
+                  </div>
+                  <div style={cardRowStyle}>
+                    <span style={cardLabelStyle}>Seller Payout</span>
+                    <span style={cardValueStrongStyle}>{formatCurrency(transaction.sellerPayout)}</span>
+                  </div>
+                  <div style={cardRowStyle}>
+                    <span style={cardLabelStyle}>Status</span>
                     <span style={statusBadgeStyle(transaction.status)}>
                       {getStatusLabel(transaction.status)}
                     </span>
-                  </td>
-                  <td style={tdStyle}>{formatDate(transaction.createdAt)}</td>
-                </tr>
+                  </div>
+                  <div style={cardRowStyle}>
+                    <span style={cardLabelStyle}>Date</span>
+                    <span>{formatDate(transaction.createdAt)}</span>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </div>
+          ) : (
+            <div style={{ ...tableContainerStyle, ...contentStyle }}>
+              <table style={tableStyle}>
+                <thead>
+                  <tr>
+                    <th style={thStyle}>Item Title</th>
+                    <th style={thStyle}>Item Price</th>
+                    <th style={thStyle}>Seller Payout</th>
+                    <th style={thStyle}>Status</th>
+                    <th style={thStyle}>Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {transactions.map((transaction) => (
+                    <tr 
+                      key={transaction._id}
+                      style={{
+                        transition: 'background-color 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = '#252b42';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = '#1e2338';
+                      }}
+                    >
+                      <td style={tdStyle}>
+                        <strong>{getItemTitle(transaction)}</strong>
+                      </td>
+                      <td style={tdStyle}>{formatCurrency(transaction.itemPrice)}</td>
+                      <td style={tdStyle}>
+                        <strong>{formatCurrency(transaction.sellerPayout)}</strong>
+                      </td>
+                      <td style={tdStyle}>
+                        <span style={statusBadgeStyle(transaction.status)}>
+                          {getStatusLabel(transaction.status)}
+                        </span>
+                      </td>
+                      <td style={tdStyle}>{formatDate(transaction.createdAt)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
