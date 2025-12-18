@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import apiClient from '../api/axios';
 import LoadingSpinner from './LoadingSpinner';
+import useResponsive from '../hooks/useResponsive';
 
 function UserInspector({ userId, isOpen, onClose, onRoleChange }) {
   const [loading, setLoading] = useState(true);
@@ -10,6 +11,8 @@ function UserInspector({ userId, isOpen, onClose, onRoleChange }) {
   const [roleChangeError, setRoleChangeError] = useState(null);
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [newRole, setNewRole] = useState(null);
+  const { isMobile, isTablet } = useResponsive();
+  const isSmallScreen = isMobile || isTablet;
 
   useEffect(() => {
     if (isOpen && userId) {
@@ -111,18 +114,18 @@ function UserInspector({ userId, isOpen, onClose, onRoleChange }) {
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 2000,
-    padding: '20px',
+    padding: isSmallScreen ? '0' : '20px',
     overflowY: 'auto'
   };
 
   const modalStyle = {
     backgroundColor: '#1e2338',
     border: '1px solid #2d3447',
-    borderRadius: '16px',
+    borderRadius: isSmallScreen ? '0' : '16px',
     padding: '0',
-    maxWidth: '1000px',
+    maxWidth: isSmallScreen ? '100%' : '1000px',
     width: '100%',
-    maxHeight: '90vh',
+    maxHeight: isSmallScreen ? '100vh' : '90vh',
     overflowY: 'auto',
     boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
     position: 'relative',
@@ -136,27 +139,28 @@ function UserInspector({ userId, isOpen, onClose, onRoleChange }) {
     zIndex: 10,
     backgroundColor: '#1e2338',
     borderBottom: '1px solid #2d3447',
-    padding: '20px 32px',
+    padding: isSmallScreen ? '12px 16px' : '20px 32px',
     display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: '16px'
+    justifyContent: isSmallScreen ? 'flex-start' : 'space-between',
+    alignItems: isSmallScreen ? 'flex-start' : 'center',
+    gap: '12px',
+    flexDirection: isSmallScreen ? 'column' : 'row'
   };
 
   const adminBannerStyle = {
     backgroundColor: '#f59e0b',
     color: '#0a0e27',
-    padding: '10px 16px',
+    padding: '8px 14px',
     borderRadius: '8px',
-    fontSize: '13px',
+    fontSize: '12px',
     fontWeight: '600',
     border: '2px solid #d97706',
     flex: 1
   };
 
   const sectionStyle = {
-    marginBottom: '32px',
-    padding: '24px',
+    marginBottom: isSmallScreen ? '20px' : '32px',
+    padding: isSmallScreen ? '16px' : '24px',
     backgroundColor: '#131829',
     borderRadius: '12px',
     border: '1px solid #2d3447',
@@ -261,7 +265,7 @@ function UserInspector({ userId, isOpen, onClose, onRoleChange }) {
   };
 
   const modalContentStyle = {
-    padding: '32px'
+    padding: isSmallScreen ? '16px' : '32px'
   };
 
   // Format User ID for display (show first 8 and last 4 chars)
@@ -365,11 +369,21 @@ function UserInspector({ userId, isOpen, onClose, onRoleChange }) {
               </div>
 
               {/* Role Management */}
-              <div style={{ marginTop: '20px', padding: '16px', backgroundColor: '#1e2338', borderRadius: '8px' }}>
+              <div style={{
+                marginTop: '20px',
+                padding: isSmallScreen ? '12px' : '16px',
+                backgroundColor: '#1e2338',
+                borderRadius: '8px'
+              }}>
                 <div style={{ color: '#b8bcc8', fontSize: '13px', marginBottom: '12px', fontWeight: '600' }}>
                   Role Management
                 </div>
-                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <div style={{
+                  display: 'flex',
+                  gap: '12px',
+                  flexWrap: 'wrap',
+                  flexDirection: isSmallScreen ? 'column' : 'row'
+                }}>
                   <button
                     onClick={() => handleRoleChangeClick('user')}
                     disabled={userData.user.role === 'user' || changingRole}
@@ -378,7 +392,9 @@ function UserInspector({ userId, isOpen, onClose, onRoleChange }) {
                       backgroundColor: userData.user.role === 'user' ? '#6b7280' : '#3b82f6',
                       color: '#ffffff',
                       opacity: (userData.user.role === 'user' || changingRole) ? 0.6 : 1,
-                      cursor: (userData.user.role === 'user' || changingRole) ? 'not-allowed' : 'pointer'
+                      cursor: (userData.user.role === 'user' || changingRole) ? 'not-allowed' : 'pointer',
+                      width: isSmallScreen ? '100%' : 'auto',
+                      textAlign: 'center'
                     }}
                   >
                     Set as Buyer
@@ -391,7 +407,9 @@ function UserInspector({ userId, isOpen, onClose, onRoleChange }) {
                       backgroundColor: userData.user.role === 'seller' ? '#6b7280' : '#10b981',
                       color: '#ffffff',
                       opacity: (userData.user.role === 'seller' || changingRole) ? 0.6 : 1,
-                      cursor: (userData.user.role === 'seller' || changingRole) ? 'not-allowed' : 'pointer'
+                      cursor: (userData.user.role === 'seller' || changingRole) ? 'not-allowed' : 'pointer',
+                      width: isSmallScreen ? '100%' : 'auto',
+                      textAlign: 'center'
                     }}
                   >
                     Promote to Seller
@@ -434,6 +452,44 @@ function UserInspector({ userId, isOpen, onClose, onRoleChange }) {
                 {userData.listings.length === 0 ? (
                   <div style={{ color: '#b8bcc8', textAlign: 'center', padding: '20px' }}>
                     No listings found
+                  </div>
+                ) : isSmallScreen ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {userData.listings.map((listing) => (
+                      <div
+                        key={listing._id}
+                        style={{
+                          padding: '12px 12px 10px',
+                          backgroundColor: '#0f1424',
+                          borderRadius: '10px',
+                          border: '1px solid #2d3447',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '6px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                          <div style={{ color: '#ffffff', fontSize: '14px', fontWeight: 600, flex: 1 }}>
+                            {listing.title}
+                          </div>
+                          <span style={badgeStyle(getStatusColor(listing.status))}>
+                            {listing.status}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontSize: '12px', color: '#9ca3af' }}>
+                          <span>Category</span>
+                          <span style={{ color: '#e5e7eb' }}>{listing.category || 'N/A'}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontSize: '12px', color: '#9ca3af' }}>
+                          <span>Price</span>
+                          <span style={{ color: '#e5e7eb' }}>{formatCurrency(listing.price)}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontSize: '12px', color: '#9ca3af' }}>
+                          <span>Stock</span>
+                          <span style={{ color: '#e5e7eb' }}>{listing.stock}</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : (
                   <table style={tableStyle}>
@@ -479,6 +535,50 @@ function UserInspector({ userId, isOpen, onClose, onRoleChange }) {
               {userData.buyerOrders.length === 0 ? (
                 <div style={{ color: '#b8bcc8', textAlign: 'center', padding: '20px' }}>
                   No orders found
+                </div>
+              ) : isSmallScreen ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {userData.buyerOrders.map((order) => (
+                    <div
+                      key={order._id}
+                      style={{
+                        padding: '12px 12px 10px',
+                        backgroundColor: '#0f1424',
+                        borderRadius: '10px',
+                        border: '1px solid #2d3447',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                        <div style={{ color: '#ffffff', fontSize: '14px', fontWeight: 600, flex: 1 }}>
+                          {order.listing?.title || order.listing?.itemName || 'N/A'}
+                        </div>
+                        <span style={badgeStyle(getStatusColor(order.status))}>
+                          {order.status.replace('_', ' ')}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontSize: '12px', color: '#9ca3af' }}>
+                        <span>Seller</span>
+                        <span style={{ color: '#e5e7eb' }}>{order.seller?.discordUsername || 'Unknown'}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontSize: '12px', color: '#9ca3af' }}>
+                        <span>Quantity</span>
+                        <span style={{ color: '#e5e7eb' }}>{order.quantity}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontSize: '12px', color: '#9ca3af' }}>
+                        <span>Total</span>
+                        <span style={{ color: '#e5e7eb' }}>{formatCurrency(order.totalPrice)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontSize: '12px', color: '#9ca3af' }}>
+                        <span>Date</span>
+                        <span style={{ color: '#e5e7eb' }}>
+                          {new Date(order.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <table style={tableStyle}>
@@ -532,6 +632,50 @@ function UserInspector({ userId, isOpen, onClose, onRoleChange }) {
                 {userData.sellerOrders.length === 0 ? (
                   <div style={{ color: '#b8bcc8', textAlign: 'center', padding: '20px' }}>
                     No orders found
+                  </div>
+                ) : isSmallScreen ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {userData.sellerOrders.map((order) => (
+                      <div
+                        key={order._id}
+                        style={{
+                          padding: '12px 12px 10px',
+                          backgroundColor: '#0f1424',
+                          borderRadius: '10px',
+                          border: '1px solid #2d3447',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '6px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                          <div style={{ color: '#ffffff', fontSize: '14px', fontWeight: 600, flex: 1 }}>
+                            {order.listing?.title || order.listing?.itemName || 'N/A'}
+                          </div>
+                          <span style={badgeStyle(getStatusColor(order.status))}>
+                            {order.status.replace('_', ' ')}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontSize: '12px', color: '#9ca3af' }}>
+                          <span>Buyer</span>
+                          <span style={{ color: '#e5e7eb' }}>{order.buyer?.discordUsername || 'Unknown'}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontSize: '12px', color: '#9ca3af' }}>
+                          <span>Quantity</span>
+                          <span style={{ color: '#e5e7eb' }}>{order.quantity}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontSize: '12px', color: '#9ca3af' }}>
+                          <span>Total</span>
+                          <span style={{ color: '#e5e7eb' }}>{formatCurrency(order.totalPrice)}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontSize: '12px', color: '#9ca3af' }}>
+                          <span>Date</span>
+                          <span style={{ color: '#e5e7eb' }}>
+                            {new Date(order.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : (
                   <table style={tableStyle}>
